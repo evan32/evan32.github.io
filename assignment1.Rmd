@@ -9,22 +9,439 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+```{r}
+library(tidyverse)
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+years <- 2017:2021
+quarters <- 1:4
+types <- c("Electric", "Gas")
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+pge_20 <- NULL
 
-```{r cars}
-summary(cars)
+for (type in types) {
+  for (year in years) {
+    for(quarter in quarters) {
+      if ((year != 2021) | (quarter != 3 & quarter != 4)) {
+  
+        filename <- 
+          paste0(
+            "pge/PGE_",
+            year,
+            "_Q",
+            quarter,
+            "_",
+            type,
+            "UsageByZip.csv"
+          )
+
+        print(filename)
+  
+        temp <- read_csv(filename)
+        
+        if (type == "Electric") {
+          temp_mutate <- 
+            temp %>%
+            filter(
+              CUSTOMERCLASS %in% 
+                c(
+                  "Elec- Residential",
+                  "Elec- Commercial"
+                )
+            ) %>% 
+            mutate(
+              TOTALKBTU = TOTALKWH*3.41214,
+              AVERAGEKBTU = AVERAGEKWH*3.41214
+            ) %>%
+           select(
+             -c(COMBINED, TOTALKWH, AVERAGEKWH)
+            )
+        }
+        
+        if (type == "Gas") {
+          temp_mutate <- 
+            temp %>%
+            filter(
+              CUSTOMERCLASS %in% 
+                c(
+                  "Gas- Residential",
+                  "Gas- Commercial"
+                )
+            ) %>% 
+            mutate(
+              TOTALKBTU = TOTALTHM*99.9761,
+              AVERAGEKBTU = AVERAGETHM*99.9761
+            ) %>%
+           select(
+             -c(COMBINED, TOTALTHM, AVERAGETHM)
+            )
+        }
+        
+        if (year == 2017) {
+          temp_mutate_norm_month <-
+          temp_mutate %>%
+          mutate(
+              MONTH_NORM = MONTH,
+            ) %>%
+           select(
+             -c(MONTH)
+            )
+        }
+        
+        if (year == 2018) {
+          temp_mutate_norm_month <-
+          temp_mutate %>%
+          mutate(
+              MONTH_NORM = MONTH + 12,
+            ) %>%
+           select(
+             -c(MONTH)
+            )
+        }
+        
+        if (year == 2019) {
+          temp_mutate_norm_month <-
+          temp_mutate %>%
+          mutate(
+              MONTH_NORM = MONTH + 24,
+            ) %>%
+           select(
+             -c(MONTH)
+            )
+        }
+        
+        if (year == 2020) {
+          temp_mutate_norm_month <-
+          temp_mutate %>%
+          mutate(
+              MONTH_NORM = MONTH + 36,
+            ) %>%
+           select(
+             -c(MONTH)
+            )
+        }
+        
+        if (year == 2021) {
+          temp_mutate_norm_month <-
+          temp_mutate %>%
+          mutate(
+              MONTH_NORM = MONTH + 48,
+            ) %>%
+           select(
+             -c(MONTH)
+            )
+        }
+  
+        pge_20 <- rbind(pge_20,temp_mutate_norm_month)
+      # Note rbind requires field names to be consistent for every new thing that you add.
+        saveRDS(pge_20, "pge_20.rds")
+      }
+    }
+  }
+}
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+```{r}
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+pge_final <-
+  pge_20 %>% 
+  select(
+    -c(AVERAGEKBTU)
+  ) %>% 
+  group_by(MONTH_NORM, YEAR, CUSTOMERCLASS) %>% 
+  summarize(
+    TOTALKBTU = 
+      sum(
+        TOTALKBTU, 
+        na.rm = T
+      ),
+    TOTALCUSTOMERS =
+      sum(
+        TOTALCUSTOMERS,
+        na.rm = T
+      )
+  ) %>% 
+  mutate(
+    AVERAGEKBTU = TOTALKBTU/TOTALCUSTOMERS
+  )  
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+pge_final_residential <-
+  pge_final %>% 
+  filter(
+    CUSTOMERCLASS %in% 
+      c(
+        "Elec- Residential",
+        "Gas- Residential"
+        )
+    ) 
+```
+
+```{r}
+pge_final_commercial <-
+  pge_final %>% 
+  filter(
+    CUSTOMERCLASS %in% 
+      c(
+        "Elec- Commercial",
+        "Gas- Commercial"
+        )
+    ) 
+```
+
+```{r}
+library(tidyverse)
+library(plotly)
+
+pge_chart_residential <-
+  pge_final_residential %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = MONTH_NORM %>% factor(),
+      y = TOTALKBTU,
+      fill = CUSTOMERCLASS
+    ),
+    stat = "identity",
+    position = "stack"
+  ) +
+  labs(
+    x = "Month",
+    y = "kBTUs",
+    title = "PG&E Territory Residential Monthly Electricity and Gas Usage 2017-2021",
+    fill = "Utility Type"
+  )
+```
+
+```{r}
+pge_chart_residential
+```
+```{r}
+library(tidyverse)
+library(plotly)
+
+pge_chart_commercial <-
+  pge_final_commercial %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = MONTH_NORM %>% factor(),
+      y = TOTALKBTU,
+      fill = CUSTOMERCLASS
+    ),
+    stat = "identity",
+    position = "stack"
+  ) +
+  labs(
+    x = "Month",
+    y = "kBTUs",
+    title = "PG&E Territory Commercial Monthly Electricity and Gas Usage 2017-2021",
+    fill = "Utility Type"
+  )
+```
+
+```{r}
+pge_chart_commercial
+```
+# 2019 and 2020 Comparison
+
+```{r}
+years <- 2019:2020
+quarters <- 1:4
+types <- c("Electric", "Gas")
+
+pge_19_20 <- NULL
+
+for (type in types) {
+  for (year in years) {
+    for(quarter in quarters) {
+      if ((year != 2021) | (quarter != 3 & quarter != 4)) {
+  
+        filename <- 
+          paste0(
+            "pge/PGE_",
+            year,
+            "_Q",
+            quarter,
+            "_",
+            type,
+            "UsageByZip.csv"
+          )
+
+        print(filename)
+  
+        temp <- read_csv(filename)
+        
+        if (type == "Electric") {
+          temp_mutate <- 
+            temp %>%
+            filter(
+              CUSTOMERCLASS %in% 
+                c(
+                  "Elec- Residential",
+                  "Elec- Commercial"
+                )
+            ) %>% 
+            mutate(
+              TOTALKBTU = TOTALKWH*3.41214,
+              AVERAGEKBTU = AVERAGEKWH*3.41214
+            ) %>%
+           select(
+             -c(COMBINED, TOTALKWH, AVERAGEKWH)
+            )
+        }
+        
+        if (type == "Gas") {
+          temp_mutate <- 
+            temp %>%
+            filter(
+              CUSTOMERCLASS %in% 
+                c(
+                  "Gas- Residential",
+                  "Gas- Commercial"
+                )
+            ) %>% 
+            mutate(
+              TOTALKBTU = TOTALTHM*99.9761,
+              AVERAGEKBTU = AVERAGETHM*99.9761
+            ) %>%
+           select(
+             -c(COMBINED, TOTALTHM, AVERAGETHM)
+            )
+        }
+        
+        if (year == 2019) {
+          temp_mutate_norm_month <-
+          temp_mutate %>%
+          mutate(
+              MONTH_NORM = MONTH,
+            ) %>%
+           select(
+             -c(MONTH)
+            )
+        }
+        
+        if (year == 2020) {
+          temp_mutate_norm_month <-
+          temp_mutate %>%
+          mutate(
+              MONTH_NORM = MONTH + 12,
+            ) %>%
+           select(
+             -c(MONTH)
+            )
+        }
+        
+        pge_19_20 <- rbind(pge_19_20,temp_mutate_norm_month)
+      # Note rbind requires field names to be consistent for every new thing that you add.
+        saveRDS(pge_19_20, "pge_19_20.rds")
+      }
+    }
+  }
+}
+
+pge_final_19_20 <-
+  pge_19_20 %>% 
+  select(
+    -c(AVERAGEKBTU)
+  ) %>% 
+  group_by(MONTH_NORM, YEAR, CUSTOMERCLASS) %>% 
+  summarize(
+    TOTALKBTU = 
+      sum(
+        TOTALKBTU, 
+        na.rm = T
+      ),
+    TOTALCUSTOMERS =
+      sum(
+        TOTALCUSTOMERS,
+        na.rm = T
+      )
+  ) %>% 
+  mutate(
+    AVERAGEKBTU = TOTALKBTU/TOTALCUSTOMERS
+  )  
+
+pge_final_19_20_residential <-
+  pge_final_19_20 %>% 
+  filter(
+    CUSTOMERCLASS %in% 
+      c(
+        "Elec- Residential",
+        "Gas- Residential"
+        )
+    ) 
+
+pge_final_19_20_commercial <-
+  pge_final_19_20 %>% 
+  filter(
+    CUSTOMERCLASS %in% 
+      c(
+        "Elec- Commercial",
+        "Gas- Commercial"
+        )
+    ) 
+```
+
+```{r}
+library(tidyverse)
+library(plotly)
+
+pge_chart_19_20_residential <-
+  pge_final_19_20_residential %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = MONTH_NORM %>% factor(),
+      y = TOTALKBTU,
+      fill = CUSTOMERCLASS
+    ),
+    stat = "identity",
+    position = "stack"
+  ) +
+  labs(
+    x = "Month",
+    y = "kBTUs",
+    title = "PG&E Territory Residential Monthly Electricity and Gas Usage 2019-2020",
+    fill = "Utility Type"
+  )
+```
+
+```{r}
+pge_chart_19_20_residential
+```
+
+```{r}
+library(tidyverse)
+library(plotly)
+
+pge_chart_19_20_commercial <-
+  pge_final_19_20_commercial %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = MONTH_NORM %>% factor(),
+      y = TOTALKBTU,
+      fill = CUSTOMERCLASS
+    ),
+    stat = "identity",
+    position = "stack"
+  ) +
+  labs(
+    x = "Month",
+    y = "kBTUs",
+    title = "PG&E Territory Commercial Monthly Electricity and Gas Usage 2019-2020",
+    fill = "Utility Type"
+  )
+```
+
+```{r}
+pge_chart_19_20_commercial
+```
+
+
+Comment on any observable changes in energy consumption that may be attributable to the COVID-19 pandemic (you are encouraged to create additional plots that help emphasize the change between 2019 and 2020). Explain any key assumptions you made in the analysis, or caveats about the data sources that you think the reader should be aware of. 
+
+The most noticeable energy consumption change between 2019 and 2020 is the drop in commercial electricity usage.
