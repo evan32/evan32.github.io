@@ -76,62 +76,8 @@ for (type in types) {
             )
         }
         
-        if (year == 2017) {
-          temp_mutate_norm_month <-
-          temp_mutate %>%
-          mutate(
-              MONTH_NORM = MONTH,
-            ) %>%
-           select(
-             -c(MONTH)
-            )
-        }
-        
-        if (year == 2018) {
-          temp_mutate_norm_month <-
-          temp_mutate %>%
-          mutate(
-              MONTH_NORM = MONTH + 12,
-            ) %>%
-           select(
-             -c(MONTH)
-            )
-        }
-        
-        if (year == 2019) {
-          temp_mutate_norm_month <-
-          temp_mutate %>%
-          mutate(
-              MONTH_NORM = MONTH + 24,
-            ) %>%
-           select(
-             -c(MONTH)
-            )
-        }
-        
-        if (year == 2020) {
-          temp_mutate_norm_month <-
-          temp_mutate %>%
-          mutate(
-              MONTH_NORM = MONTH + 36,
-            ) %>%
-           select(
-             -c(MONTH)
-            )
-        }
-        
-        if (year == 2021) {
-          temp_mutate_norm_month <-
-          temp_mutate %>%
-          mutate(
-              MONTH_NORM = MONTH + 48,
-            ) %>%
-           select(
-             -c(MONTH)
-            )
-        }
-  
-        pge_20 <- rbind(pge_20,temp_mutate_norm_month)
+
+        pge_20 <- rbind(pge_20,temp_mutate)
       # Note rbind requires field names to be consistent for every new thing that you add.
         saveRDS(pge_20, "pge_20.rds")
       }
@@ -148,7 +94,7 @@ pge_final <-
   select(
     -c(AVERAGEKBTU)
   ) %>% 
-  group_by(MONTH_NORM, YEAR, CUSTOMERCLASS) %>% 
+  group_by(MONTH, YEAR, CUSTOMERCLASS) %>% 
   summarize(
     TOTALKBTU = 
       sum(
@@ -163,13 +109,23 @@ pge_final <-
   ) %>% 
   mutate(
     AVERAGEKBTU = TOTALKBTU/TOTALCUSTOMERS
-  )  
+  )
+
+pge_final_date <-
+  pge_final %>% 
+  mutate(
+    DATE = as.Date(
+      paste0(
+        YEAR, "-", MONTH, "-", "01"
+      )
+    )
+  ) 
 ```
 
 
 ```{r}
 pge_final_residential <-
-  pge_final %>% 
+  pge_final_date %>% 
   filter(
     CUSTOMERCLASS %in% 
       c(
@@ -181,7 +137,7 @@ pge_final_residential <-
 
 ```{r}
 pge_final_commercial <-
-  pge_final %>% 
+  pge_final_date %>% 
   filter(
     CUSTOMERCLASS %in% 
       c(
@@ -200,7 +156,7 @@ pge_chart_residential <-
   ggplot() +
   geom_bar(
     aes(
-      x = MONTH_NORM %>% factor(),
+      x = DATE,
       y = TOTALKBTU,
       fill = CUSTOMERCLASS
     ),
@@ -208,7 +164,7 @@ pge_chart_residential <-
     position = "stack"
   ) +
   labs(
-    x = "Month",
+    x = "DATE (MONTH/YEAR)",
     y = "kBTUs",
     title = "PG&E Territory Residential Monthly Electricity and Gas Usage 2017-2021",
     fill = "Utility Type"
@@ -227,7 +183,7 @@ pge_chart_commercial <-
   ggplot() +
   geom_bar(
     aes(
-      x = MONTH_NORM %>% factor(),
+      x = DATE,
       y = TOTALKBTU,
       fill = CUSTOMERCLASS
     ),
@@ -235,7 +191,7 @@ pge_chart_commercial <-
     position = "stack"
   ) +
   labs(
-    x = "Month",
+    x = "DATE (MONTH/YEAR)",
     y = "kBTUs",
     title = "PG&E Territory Commercial Monthly Electricity and Gas Usage 2017-2021",
     fill = "Utility Type"
@@ -312,29 +268,7 @@ for (type in types) {
             )
         }
         
-        if (year == 2019) {
-          temp_mutate_norm_month <-
-          temp_mutate %>%
-          mutate(
-              MONTH_NORM = MONTH,
-            ) %>%
-           select(
-             -c(MONTH)
-            )
-        }
-        
-        if (year == 2020) {
-          temp_mutate_norm_month <-
-          temp_mutate %>%
-          mutate(
-              MONTH_NORM = MONTH + 12,
-            ) %>%
-           select(
-             -c(MONTH)
-            )
-        }
-        
-        pge_19_20 <- rbind(pge_19_20,temp_mutate_norm_month)
+        pge_19_20 <- rbind(pge_19_20,temp_mutate)
       # Note rbind requires field names to be consistent for every new thing that you add.
         saveRDS(pge_19_20, "pge_19_20.rds")
       }
@@ -347,7 +281,7 @@ pge_final_19_20 <-
   select(
     -c(AVERAGEKBTU)
   ) %>% 
-  group_by(MONTH_NORM, YEAR, CUSTOMERCLASS) %>% 
+  group_by(MONTH, YEAR, CUSTOMERCLASS) %>% 
   summarize(
     TOTALKBTU = 
       sum(
@@ -362,10 +296,20 @@ pge_final_19_20 <-
   ) %>% 
   mutate(
     AVERAGEKBTU = TOTALKBTU/TOTALCUSTOMERS
-  )  
+  )
+
+pge_final_19_20_date <-
+  pge_final_19_20 %>% 
+  mutate(
+    DATE = as.Date(
+      paste0(
+        YEAR, "-", MONTH, "-", "01"
+      )
+    )
+  ) 
 
 pge_final_19_20_residential <-
-  pge_final_19_20 %>% 
+  pge_final_19_20_date %>% 
   filter(
     CUSTOMERCLASS %in% 
       c(
@@ -375,7 +319,7 @@ pge_final_19_20_residential <-
     ) 
 
 pge_final_19_20_commercial <-
-  pge_final_19_20 %>% 
+  pge_final_19_20_date %>% 
   filter(
     CUSTOMERCLASS %in% 
       c(
@@ -394,7 +338,7 @@ pge_chart_19_20_residential <-
   ggplot() +
   geom_bar(
     aes(
-      x = MONTH_NORM %>% factor(),
+      x = DATE,
       y = TOTALKBTU,
       fill = CUSTOMERCLASS
     ),
@@ -402,7 +346,7 @@ pge_chart_19_20_residential <-
     position = "stack"
   ) +
   labs(
-    x = "Month",
+    x = "DATE (MONTH/YEAR)",
     y = "kBTUs",
     title = "PG&E Territory Residential Monthly Electricity and Gas Usage 2019-2020",
     fill = "Utility Type"
@@ -422,7 +366,7 @@ pge_chart_19_20_commercial <-
   ggplot() +
   geom_bar(
     aes(
-      x = MONTH_NORM %>% factor(),
+      x = DATE,
       y = TOTALKBTU,
       fill = CUSTOMERCLASS
     ),
@@ -430,7 +374,7 @@ pge_chart_19_20_commercial <-
     position = "stack"
   ) +
   labs(
-    x = "Month",
+    x = "DATE (MONTH/YEAR)",
     y = "kBTUs",
     title = "PG&E Territory Commercial Monthly Electricity and Gas Usage 2019-2020",
     fill = "Utility Type"
@@ -442,6 +386,9 @@ pge_chart_19_20_commercial
 ```
 
 
-Comment on any observable changes in energy consumption that may be attributable to the COVID-19 pandemic (you are encouraged to create additional plots that help emphasize the change between 2019 and 2020). Explain any key assumptions you made in the analysis, or caveats about the data sources that you think the reader should be aware of. 
+Prompt: Comment on any observable changes in energy consumption that may be attributable to the COVID-19 pandemic (you are encouraged to create additional plots that help emphasize the change between 2019 and 2020). Explain any key assumptions you made in the analysis, or caveats about the data sources that you think the reader should be aware of. 
 
-The most noticeable energy consumption change between 2019 and 2020 is the drop in commercial electricity usage.
+Answer: The most noticeable energy consumption change between 2019 and 2020 is the drop in commercial electricity usage. Relative to the corresponding month in 2019, the montly usage in 2020 fell on average approximately .2e^10 kBTUs. This is most likely due to the switch to remote working so there is less commercial electricity being used. In addition, commercial gas also fell but not as drastically as commercial electricity. Residential gas and electricty fluxated a little between 2019 and 2020 but stayed mostly consistent between the two years- the fluxation accounts for a slight increase in residential electricty; this is consistent with the workig remotely explanation as people are spending more time in their residential environment. 
+
+Key Assumptions: 
+An assumption is the correct conversion precision between kWhs to kBTUs and therms to kBTUs. The original data set used kWhs for electricity and therms for gas. In this analysis, the kWhs to kBTUs conversion was 1 to 3.41214 and the therms to kBTUs was 1 to 99.9761. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by PG&E so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way. 
