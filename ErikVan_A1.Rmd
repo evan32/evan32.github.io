@@ -1,12 +1,18 @@
 ---
-title: "assignment1"
+title: "ErikVan_A1"
 author: "Erik Van"
-date: "9/23/2021"
+date: "9/28/2021"
 output: html_document
 ---
 
+# CEE 218X Assignment 1 
+
+## The following is the output of loading the packages and parsing the PG&E data to analyze 2017-2021 data. 
+
+ 
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = F)
 ```
 
 ```{r}
@@ -171,6 +177,8 @@ pge_chart_residential <-
   )
 ```
 
+## The following are the graphs of PG&E data between 2017 and 2021. 
+
 ```{r}
 pge_chart_residential
 ```
@@ -201,7 +209,9 @@ pge_chart_commercial <-
 ```{r}
 pge_chart_commercial
 ```
-# 2019 and 2020 Comparison
+
+
+## The following is the output of loading the packages and parsing the PG&E data to analayze 2019-2020 data. 
 
 ```{r}
 years <- 2019:2020
@@ -353,6 +363,9 @@ pge_chart_19_20_residential <-
   )
 ```
 
+## The following are the graphs of PG&E data between 2019 and 2020. 
+
+
 ```{r}
 pge_chart_19_20_residential
 ```
@@ -386,9 +399,13 @@ pge_chart_19_20_commercial
 ```
 
 
-Prompt: Comment on any observable changes in energy consumption that may be attributable to the COVID-19 pandemic (you are encouraged to create additional plots that help emphasize the change between 2019 and 2020). Explain any key assumptions you made in the analysis, or caveats about the data sources that you think the reader should be aware of. 
+## Prompt: 
+Comment on any observable changes in energy consumption that may be attributable to the COVID-19 pandemic (you are encouraged to create additional plots that help emphasize the change between 2019 and 2020). Explain any key assumptions you made in the analysis, or caveats about the data sources that you think the reader should be aware of. 
 
-Answer: The most noticeable energy consumption change between 2019 and 2020 is the drop in commercial electricity usage. Relative to the corresponding month in 2019, the montly usage in 2020 fell on average approximately .2e^10 kBTUs. This is most likely due to the switch to remote working so there is less commercial electricity being used. In addition, commercial gas also fell but not as drastically as commercial electricity. Residential gas and electricty fluxated a little between 2019 and 2020 but stayed mostly consistent between the two years- the fluxation accounts for a slight increase in residential electricty; this is consistent with the workig remotely explanation as people are spending more time in their residential environment. 
 
-Key Assumptions: 
+## Answer: 
+The most noticeable energy consumption change between 2019 and 2020 is the drop in commercial electricity usage. Relative to the corresponding month in 2019, the montly usage in 2020 fell on average approximately .2e^10 kBTUs. This is most likely due to the switch to remote working so there is less commercial electricity being used. In addition, commercial gas also fell but not as drastically as commercial electricity. Residential gas and electricity fluctuated a little between 2019 and 2020 but stayed mostly consistent between the two years- the fluctuation accounts for a slight increase in residential electricity; this is consistent with the working remotely explanation as people are spending more time in their residential environment. 
+
+ 
+## Key Assumptions: 
 An assumption is the correct conversion precision between kWhs to kBTUs and therms to kBTUs. The original data set used kWhs for electricity and therms for gas. In this analysis, the kWhs to kBTUs conversion was 1 to 3.41214 and the therms to kBTUs was 1 to 99.9761. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by PG&E so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way. 
