@@ -40,7 +40,7 @@ for (type in types) {
             "UsageByZip.csv"
           )
 
-        print(filename)
+        #print(filename)
   
         temp <- read_csv(filename)
         
@@ -236,7 +236,7 @@ for (type in types) {
             "UsageByZip.csv"
           )
 
-        print(filename)
+        #print(filename)
   
         temp <- read_csv(filename)
         
