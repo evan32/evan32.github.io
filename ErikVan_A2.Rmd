@@ -83,7 +83,7 @@ library(devtools)
 #install_github('walkerke/tigris')
 library(tigris)
 ```
-## The following is the population of Santa Clara in 2010. 
+## The following is the population map of Santa Clara in 2010. 
 
 ```{r}
 dec_vars_2010 <-
@@ -127,7 +127,92 @@ nfo_pop_2010 <- smc_pop_2010 %>%
 mapview(nfo_pop_2010, zcol = "pop")
 ```
 
-## The following is the population of Santa Clara in 2020. 
+## The following is subsetting 2010 data 
+
+```{r}
+bay_pdas <- st_read("https://opendata.arcgis.com/datasets/4df9cb38d77346a289252ced4ffa0ca0_0.geojson")
+
+smc_pdas <-
+  bay_pdas %>% 
+  filter(county == "Santa Clara") %>% 
+  st_transform(4269)
+
+smc_pdas_blocks_2010 <- smc_blocks_2010[smc_pdas, ]
+```
+
+```{r}
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = smc_pdas,
+    stroke = F,
+    fillOpacity = 0.5
+  ) %>% 
+  addPolygons(
+    data = smc_pdas_blocks_2010,
+    color = "red",
+    weight = 0.75,
+    fill = F
+  )
+```
+### Estimate the population within the PDAs by bracket-based spatial filtering in the map above, take all those red-outlined blocks, and sum their population.
+
+```{r}
+smc_pdas_blocks_1_2010 <- smc_pdas_blocks_2010 %>% 
+  select(block = GEOID10) %>% 
+  left_join(smc_pop_2010)
+
+sum(smc_pdas_blocks_1_2010$pop)
+```
+
+### Estimate the 2010 population within the PDAs by subsets to only blocks with their centroid inside of the PDA boundaries,
+```{r}
+smc_pdas_blocks_2_2010 <-
+  smc_pdas_blocks_1_2010 %>% 
+  st_centroid() %>% 
+  .[smc_pdas, ] %>% 
+  st_set_geometry(NULL) %>% 
+  left_join(smc_pdas_blocks_1_2010 %>% select(block)) %>% 
+  st_as_sf()
+
+sum(smc_pdas_blocks_2_2010$pop)
+```
+
+```{r}
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = smc_pdas,
+    stroke = F,
+    fillOpacity = 0.5
+  ) %>% 
+  addPolygons(
+    data = smc_pdas_blocks_2_2010,
+    color = "red",
+    weight = 0.75,
+    fill = F
+  )
+```
+
+```{r}
+smc_pdas_blocks_3_2010 <-
+  smc_pdas_blocks_2010 %>% 
+  select(block = GEOID10) %>% 
+  left_join(smc_pop_2010) %>% 
+  st_transform(26910) %>% 
+  mutate(original_area = st_area(.)) %>% 
+  st_intersection(
+    smc_pdas %>% 
+      st_transform(26910)
+  ) %>% 
+  mutate(
+    leftover_area = st_area(.),
+    perc_area = leftover_area / original_area,
+    pop = pop * perc_area
+  )
+```
+
+## The following is the population map of Santa Clara in 2020. 
 
 ```{r}
 smc_blocks_2020 <- blocks("CA", "Santa Clara", year = 2020, progress_bar = F)
@@ -151,6 +236,92 @@ nfo_pop_2020 <- smc_pop_2020 %>%
 mapview(nfo_pop_2020, zcol = "pop")
 ```
 
+## The following is subsetting 2020 data 
+```{r}
+bay_pdas <- st_read("https://opendata.arcgis.com/datasets/4df9cb38d77346a289252ced4ffa0ca0_0.geojson")
+
+smc_pdas <-
+  bay_pdas %>% 
+  filter(county == "Santa Clara") %>% 
+  st_transform(4269)
+
+smc_pdas_blocks_2020 <- smc_blocks_2020[smc_pdas, ]
+```
+
+```{r}
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = smc_pdas,
+    stroke = F,
+    fillOpacity = 0.5
+  ) %>% 
+  addPolygons(
+    data = smc_pdas_blocks_2020,
+    color = "red",
+    weight = 0.75,
+    fill = F
+  )
+```
+
+### Estimate the 2020 population within the PDAs by bracket-based spatial filtering in the map above, take all those red-outlined blocks, and sum their population.
+```{r}
+smc_pdas_blocks_1_2020 <- smc_pdas_blocks_2020 %>% 
+  select(block = GEOID20) %>% 
+  left_join(smc_pop_2020)
+
+sum(smc_pdas_blocks_1_2020$pop)
+```
+
+### Estimate the 2010 population within the PDAs by subsets to only blocks with their centroid inside of the PDA boundaries,
+
+```{r}
+smc_pdas_blocks_2_2020 <-
+  smc_pdas_blocks_1_2020 %>% 
+  st_centroid() %>% 
+  .[smc_pdas, ] %>% 
+  st_set_geometry(NULL) %>% 
+  left_join(smc_pdas_blocks_1_2020 %>% select(block)) %>% 
+  st_as_sf()
+
+sum(smc_pdas_blocks_2_2020$pop)
+```
+
+```{r}
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = smc_pdas,
+    stroke = F,
+    fillOpacity = 0.5
+  ) %>% 
+  addPolygons(
+    data = smc_pdas_blocks_2_2020,
+    color = "red",
+    weight = 0.75,
+    fill = F
+  )
+```
+
+```{r}
+smc_pdas_blocks_3_2020 <-
+  smc_pdas_blocks_2020 %>% 
+  select(block = GEOID20) %>% 
+  left_join(smc_pop_2020) %>% 
+  st_transform(26910) %>% 
+  mutate(original_area = st_area(.)) %>% 
+  st_intersection(
+    smc_pdas %>% 
+      st_transform(26910)
+  ) %>% 
+  mutate(
+    leftover_area = st_area(.),
+    perc_area = leftover_area / original_area,
+    pop = pop * perc_area
+  )
+```
+
+
 ## The following is the absolute change in population of Santa Clara between 2010 and 2020. 
 
 ```{r}
@@ -162,12 +333,15 @@ nfo_pop_2010_test = nfo_pop_2010 %>%
 
 diff = nfo_pop_2010_test %>%
   left_join(nfo_pop_2020_test, by = "block") %>%
-  mutate(abs_diff = abs(pop.x - pop.y)) %>% 
+  mutate(abs_diff = pop.y - pop.x) %>% 
   left_join(nfo_pop_2010 %>% select(-pop)) %>%
   st_as_sf() %>%
   mutate(abs_diff_final = ifelse(is.na(abs_diff), 0, abs_diff))
 # 
-mapview(diff, zcol = "abs_diff_final")
+
+pal = mapviewPalette("mapviewTopoColors")
+
+mapview(diff, zcol = "abs_diff_final",  col.regions = pal(50))
 ```
 
 ## Findings:
