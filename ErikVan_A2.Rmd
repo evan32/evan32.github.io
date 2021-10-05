@@ -1,0 +1,180 @@
+---
+title: "ErikVan_A2"
+author: "Erik Van"
+date: "10/5/2021"
+output: html_document
+---
+
+# CEE 218X Assignment 2 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r }
+library(tidyverse)
+library(sf)
+library(tigris)
+library(censusapi)
+library(mapview)
+library(leaflet)
+```
+## The following is a map view of bay area counties. 
+
+```{r}
+bay_county_names <-
+  c(
+    "Alameda",
+    "Contra Costa",
+    "Marin",
+    "Napa",
+    "San Francisco",
+    "San Mateo",
+    "Santa Clara",
+    "Solano",
+    "Sonoma"
+  )
+
+bay_counties <-
+  counties("CA", cb = T, progress_bar = F) %>%
+  filter(NAME %in% bay_county_names)
+
+ca_cities <- places("CA", cb = T, progress_bar = FALSE)
+
+bay_cities <- ca_cities[bay_counties, ]
+
+mapview(bay_counties, alpha.regions = 0) + mapview(bay_cities)
+```
+
+## For the purpose of this assignment, I am looking specifically at Santa Clara. The following is a map view of Santa Clara. 
+
+```{r}
+santa_clara <- filter(bay_cities, NAME=="Santa Clara")
+mapview(santa_clara)
+```
+
+```{r}
+Sys.setenv(CENSUS_KEY="c62157b401602339b2de9d50febd72f108e0972d")
+
+dec_vars_2020 <-
+  listCensusMetadata(
+    name = "2020/dec/pl",
+    type = "variables"
+  )
+
+smc_pop_2020 <-
+  getCensus(
+    name = "dec/pl",
+    vintage = 2020,
+    region = "block:*", 
+    regionin = "state:06+county:085",
+    vars = "P1_001N"
+  ) %>% 
+  transmute(
+    block =
+      paste0(state,county,tract,block),
+    pop = P1_001N
+  )
+
+```
+
+```{r}
+library(devtools)
+#install_github('walkerke/tigris')
+library(tigris)
+```
+
+## The following is the population of Santa Clara in 2020. 
+
+```{r}
+smc_blocks_2020 <- blocks("CA", "Santa Clara", year = 2020, progress_bar = F)
+
+nfo_boundary <- places("CA", progress_bar = F) %>% 
+  filter(NAME == "Santa Clara")
+
+nfo_pop_2020 <- smc_pop_2020 %>% 
+ left_join(smc_blocks_2020 %>% select(block = GEOID20)) %>% 
+  st_as_sf() %>% 
+  st_centroid() %>% 
+  .[nfo_boundary, ] %>% 
+  st_set_geometry(NULL) %>% 
+  left_join(smc_blocks_2020 %>% select(block = GEOID20)) %>% 
+  st_as_sf()
+
+```
+
+
+```{r}
+mapview(nfo_pop_2020, zcol = "pop")
+```
+
+
+## The following is the population of Santa Clara in 2010. 
+
+```{r}
+dec_vars_2010 <-
+  listCensusMetadata(
+    name = "2010/dec/sf1",
+    type = "variables"
+  )
+
+smc_pop_2010 <-
+  getCensus(
+    name = "dec/sf1",
+    vintage = 2010,
+    region = "block:*", 
+    regionin = "state:06+county:085",
+    vars = "H006001"
+  ) %>% 
+  transmute(
+    block =
+      paste0(state,county,tract,block),
+    pop = H006001
+  )
+
+smc_blocks_2010 <- blocks("CA", "Santa Clara", year = 2010, progress_bar = F)
+
+nfo_boundary <- places("CA", progress_bar = F) %>% 
+  filter(NAME == "Santa Clara")
+
+nfo_pop_2010 <- smc_pop_2010 %>% 
+ left_join(smc_blocks_2010 %>% select(block = GEOID10)) %>% 
+  st_as_sf() %>% 
+  st_centroid() %>% 
+  .[nfo_boundary, ] %>% 
+  st_set_geometry(NULL) %>% 
+  left_join(smc_blocks_2010 %>% select(block = GEOID10)) %>% 
+  st_as_sf()
+
+
+```
+
+```{r}
+mapview(nfo_pop_2010, zcol = "pop")
+```
+
+## The following is the absolute change in population of Santa Clara between 2010 and 2020. 
+
+```{r}
+nfo_pop_2020_test = nfo_pop_2020 %>%
+  st_drop_geometry()
+
+nfo_pop_2010_test = nfo_pop_2010 %>%
+  st_drop_geometry()
+
+diff = nfo_pop_2010_test %>%
+  left_join(nfo_pop_2020_test, by = "block") %>%
+  mutate(abs_diff = abs(pop.x - pop.y)) %>% 
+  left_join(nfo_pop_2010 %>% select(-pop)) %>%
+  st_as_sf() %>%
+  mutate(abs_diff_final = ifelse(is.na(abs_diff), 0, abs_diff))
+# 
+mapview(diff, zcol = "abs_diff_final")
+```
+
+## Findings:
+### Based on the absolute difference of population between 2010 and 2020 in Santa Clara, there seems to be lots of small pockets of large population change. Most of the Santa Clara area experienced very little population change. However, given the population difference, we don't have a full picture of what exactly this means- we don't know the breakdown of migration, births, and deaths so we can't make a clear conclusion of how much the actual communities changed. Another key finding is my learning curve with R. I had never used R before and thought there was a significant gap between the chapters/in-class R sessions and the assignment. Because of that, I spent a lot of time trying to learn how to combine data tables and manipulate them. This was an insightful R assignment but further in-class/online chapter support would be appreciated for future iterations of this course/future assignments. 
+
+## Key Assumptions: 
+### Using the data we found on the census, 2010 had more data points than 2020. There may be a variety of reasons for this- ranging from covid-related reasons to changes in how data was collected to changes in neighborhood boundaries. For the purposes of presenting a visual of the difference between 2010 and 2020, I supplemented missing data and "NAs" with a zero value. This isn't entirely accurate of the reality of population change but it gives a sense of what the data shows and where the gap between data collected and the reality of the situation. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by the US Census, so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way.
+ 
