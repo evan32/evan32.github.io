@@ -1,0 +1,449 @@
+---
+title: "ErikVan_A3"
+author: "Erik Van"
+date: "10/12/2021"
+output: html_document
+---
+
+# CEE 218X Assignment 3 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r }
+library(censusapi)
+library(tidyverse)
+library(tigris)
+library(sf)
+library(leaflet)
+
+Sys.setenv(CENSUS_KEY="c8aa67e4086b4b5ce3a8717f59faa9a28f611dab")
+```
+
+
+
+```{r}
+temp <- tempfile()
+download.file("https://www2.census.gov/programs-surveys/acs/data/pums/2019/1-Year/csv_hca.zip",destfile = temp)
+
+pums_hca_2019_1yr <- read_csv(unzip(temp,"psam_h06.csv"))
+
+unlink(temp)
+```
+
+
+```{r}
+pums_2019_1yr <- getCensus(
+  name = "acs/acs1/pums",
+  vintage = 2019,
+  region = "public use microdata area:*", 
+  regionin = "state:06",
+  vars = c(
+    "SERIALNO",
+    "SPORDER",
+    "PWGTP",
+    "WGTP",
+    "NP",
+    "HHL",
+    "HINCP",
+    "TEN", 
+    "RACAIAN",
+    "RACBLK",
+    "REFR", 
+    "SCHL",
+    "DDRS",
+    "DOUT", 
+    "HINS4",
+    "HINS3"
+    
+  )
+)
+```
+
+```{r}
+ca_pumas <-
+  pumas("CA", cb = T, progress_bar = F)
+
+bay_county_names <-
+  c(
+    "Alameda",
+    "Contra Costa",
+    "Marin",
+    "Napa",
+    "San Francisco",
+    "San Mateo",
+    "Santa Clara",
+    "Solano",
+    "Sonoma"
+  )
+
+bay_counties <-
+  counties("CA", cb = T, progress_bar = F) %>%
+  filter(NAME %in% bay_county_names)
+
+bay_pumas <-
+  ca_pumas %>% 
+  st_centroid() %>% 
+  .[bay_counties, ] %>% 
+  st_drop_geometry() %>% 
+  left_join(ca_pumas %>% select(GEOID10)) %>% 
+  st_as_sf()
+
+bay_pums <-
+  pums_2019_1yr %>% 
+  mutate(
+    PUMA = str_pad(public_use_microdata_area,5,"left","0")
+  ) %>% 
+  filter(PUMA %in% bay_pumas$PUMACE10)
+
+```
+
+```{r}
+bay_pums_example1 <-
+  bay_pums %>% 
+  filter(!duplicated(SERIALNO)) %>% 
+  mutate(
+    WGTP = as.numeric(WGTP),
+    population = ifelse(
+      (HINS3 == 1) |
+        (HINS4 == 1),
+      WGTP,
+      0
+    )
+  ) %>% 
+  group_by(PUMA) %>% 
+  summarize(
+    percent_population =
+      sum(population, na.rm =T)/sum(WGTP, na.rm = T)*100
+  ) %>% 
+  left_join(
+    bay_pumas %>% 
+      select(PUMACE10),
+    by = c("PUMA" = "PUMACE10")
+  ) %>% 
+  st_as_sf()
+```
+
+## The following is a map of percentage of households on medicare (65 and older or people with certain disabilities) or medicaid, medical Assistance, or any kind of government-assistance plan (low income)  
+
+```{r}
+pums_pal <- colorNumeric(
+  palette = "PiYG",
+  domain = bay_pums_example1$percent_population
+)
+
+leaflet() %>%
+  addTiles() %>% 
+  addPolygons(
+    data = bay_pums_example1,
+    fillColor = ~pums_pal(percent_population),
+    color = "white",
+    opacity = 0.5,
+    fillOpacity = 0.5,
+    weight = 1,
+    label = ~paste0(
+      round(percent_population), 
+      "% Medicare (65 and older or people with certain disabilities) or Medicaid, Medical Assistance, or any kind of government-assistance plan (low income) "
+    ),
+    highlightOptions = highlightOptions(
+      weight = 2,
+      opacity = 1
+    )
+  ) %>% 
+  addLegend(
+    data = bay_pums_example1,
+    pal = pums_pal,
+    values = ~percent_population,
+    title = "% households on medicare, medicaid, medical assistance, or other gov assistance"
+  )
+
+
+```
+
+## The following is a total of households on medicare (65 and older or people with certain disabilities) or medicaid, medical Assistance, or any kind of government-assistance plan (low income)  
+
+```{r}
+bay_pums_example1_sum <-
+  bay_pums %>% 
+  filter(!duplicated(SERIALNO)) %>% 
+  mutate(
+    WGTP = as.numeric(WGTP),
+    population = ifelse(
+      (HINS3 == 1) |
+        (HINS4 == 1),
+      WGTP,
+      0
+    )
+  ) %>% 
+  group_by(PUMA) %>% 
+  summarize(
+    population_sum = sum(population, na.rm = T)
+  ) 
+
+sum(bay_pums_example1_sum$population_sum)
+```
+
+## The following is a map of percentage of households without college degree and households making less than $100K
+```{r}
+bay_pums_example2 <-
+  bay_pums %>% 
+  filter(!duplicated(SERIALNO)) %>% 
+  mutate(
+    WGTP = as.numeric(WGTP),
+    population = ifelse(
+      (SCHL <= 19) &
+        (HINCP < 100000),
+      WGTP,
+      0
+    )
+  ) %>% 
+  group_by(PUMA) %>% 
+  summarize(
+    percent_population =
+      sum(population, na.rm =T)/sum(WGTP, na.rm = T)*100
+  ) %>% 
+  left_join(
+    bay_pumas %>% 
+      select(PUMACE10),
+    by = c("PUMA" = "PUMACE10")
+  ) %>% 
+  st_as_sf()
+```
+
+
+```{r}
+pums_pal <- colorNumeric(
+  palette = "PiYG",
+  domain = bay_pums_example2$percent_population
+)
+
+leaflet() %>%
+  addTiles() %>% 
+  addPolygons(
+    data = bay_pums_example2,
+    fillColor = ~pums_pal(percent_population),
+    color = "white",
+    opacity = 0.5,
+    fillOpacity = 0.5,
+    weight = 1,
+    label = ~paste0(
+      round(percent_population), 
+      "% Without college degree and households making less than $100K"
+    ),
+    highlightOptions = highlightOptions(
+      weight = 2,
+      opacity = 1
+    )
+  ) %>% 
+  addLegend(
+    data = bay_pums_example2,
+    pal = pums_pal,
+    values = ~percent_population,
+    title = "% Without college degree and households making less than $100K"
+  )
+
+
+```
+
+## The following is a total of households without college degree and households making less than $100K
+
+```{r}
+bay_pums_example2_sum <-
+  bay_pums %>% 
+  filter(!duplicated(SERIALNO)) %>% 
+  mutate(
+    WGTP = as.numeric(WGTP),
+    population = ifelse(
+      (SCHL <= 19) &
+        (HINCP < 100000),
+      WGTP,
+      0
+    )
+  ) %>% 
+  group_by(PUMA) %>% 
+  summarize(
+    population_sum = sum(population, na.rm = T)
+  ) 
+
+sum(bay_pums_example2_sum$population_sum)
+```
+
+
+## The following is a map of percentage of households without refrigerator
+
+```{r}
+bay_pums_example3 <-
+  bay_pums %>% 
+  filter(!duplicated(SERIALNO)) %>% 
+  mutate(
+    WGTP = as.numeric(WGTP),
+    population = ifelse(
+      (REFR == 2),
+      WGTP,
+      0
+    )
+  ) %>% 
+  group_by(PUMA) %>% 
+  summarize(
+    percent_population =
+      sum(population, na.rm =T)/sum(WGTP, na.rm = T)*100
+  ) %>% 
+  left_join(
+    bay_pumas %>% 
+      select(PUMACE10),
+    by = c("PUMA" = "PUMACE10")
+  ) %>% 
+  st_as_sf()
+```
+
+
+```{r}
+pums_pal <- colorNumeric(
+  palette = "PiYG",
+  domain = bay_pums_example3$percent_population
+)
+
+leaflet() %>%
+  addTiles() %>% 
+  addPolygons(
+    data = bay_pums_example3,
+    fillColor = ~pums_pal(percent_population),
+    color = "white",
+    opacity = 0.5,
+    fillOpacity = 0.5,
+    weight = 1,
+    label = ~paste0(
+      round(percent_population), 
+      "% Without Refrigerator"
+    ),
+    highlightOptions = highlightOptions(
+      weight = 2,
+      opacity = 1
+    )
+  ) %>% 
+  addLegend(
+    data = bay_pums_example3,
+    pal = pums_pal,
+    values = ~percent_population,
+    title = "% Without Refrigerator"
+  )
+
+
+```
+## The following is a total of households without refrigerator
+
+```{r}
+bay_pums_example3_sum <-
+  bay_pums %>% 
+  filter(!duplicated(SERIALNO)) %>% 
+  mutate(
+    WGTP = as.numeric(WGTP),
+    population = ifelse(
+      (REFR == 2),
+      WGTP,
+      0
+    )
+  ) %>% 
+  group_by(PUMA) %>% 
+  summarize(
+    population_sum = sum(population, na.rm = T)
+  ) 
+
+sum(bay_pums_example3_sum$population_sum)
+```
+
+
+## The following is a map of percentage households with self-care difficulty or independent living difficulty
+
+
+```{r}
+bay_pums_example4 <-
+  bay_pums %>% 
+  filter(!duplicated(SERIALNO)) %>% 
+  mutate(
+    WGTP = as.numeric(WGTP),
+    population = ifelse(
+      (DDRS == 1) |
+        (DOUT == 1),
+      WGTP,
+      0
+    )
+  ) %>% 
+  group_by(PUMA) %>% 
+  summarize(
+    percent_population =
+      sum(population, na.rm =T)/sum(WGTP, na.rm = T)*100
+  ) %>% 
+  left_join(
+    bay_pumas %>% 
+      select(PUMACE10),
+    by = c("PUMA" = "PUMACE10")
+  ) %>% 
+  st_as_sf()
+```
+
+
+```{r}
+pums_pal <- colorNumeric(
+  palette = "PiYG",
+  domain = bay_pums_example4$percent_population
+)
+
+leaflet() %>%
+  addTiles() %>% 
+  addPolygons(
+    data = bay_pums_example4,
+    fillColor = ~pums_pal(percent_population),
+    color = "white",
+    opacity = 0.5,
+    fillOpacity = 0.5,
+    weight = 1,
+    label = ~paste0(
+      round(percent_population), 
+      "% With Self-care difficulty or Independent living difficulty "
+    ),
+    highlightOptions = highlightOptions(
+      weight = 2,
+      opacity = 1
+    )
+  ) %>% 
+  addLegend(
+    data = bay_pums_example4,
+    pal = pums_pal,
+    values = ~percent_population,
+    title = "% With Self-care difficulty or Independent living difficult"
+  )
+
+
+```
+## The following is a total of households with self-care difficulty or independent living difficult
+
+```{r}
+bay_pums_example4_sum <-
+  bay_pums %>% 
+  filter(!duplicated(SERIALNO)) %>% 
+  mutate(
+    WGTP = as.numeric(WGTP),
+    population = ifelse(
+      (DDRS == 1) |
+        (DOUT == 1),
+      WGTP,
+      0
+    )
+  ) %>% 
+  group_by(PUMA) %>% 
+  summarize(
+    population_sum = sum(population, na.rm = T)
+  ) 
+
+sum(bay_pums_example4_sum$population_sum)
+```
+
+## Findings:
+### The first map I looked at was the percentage of the population that was on medicare, medicaid, medical assistance, or other government assistance. This search is to target some high risk population during a heat wave- people who are low-income, with a disability, and/or older. This map is useful to see because there is drastic difference in percentage of people when looking at the map. All the green values (40-45%) are in the northern part of the bay and there are pockets of white (30-35%) near the silicon valley area, which is interesting because that is also where the wealthiest zipcodes are too. The second map I looked at were people without college degrees and making under 100K. This is interesting because it has some similarities with the first map but the biggest difference seems to be the largest pockets of these people are more in the valley and not in the bay. The third map I looked at were people without refrigerators and this map shows that most people do have refrigerators and this doesn't really vary with location. The last map I looked at was at another high risk population- people with self care of indepedent living difficulty. This map is similiar to the first where the majority of the green (7-9%) are in the northern part of the bay. These findings demonstrate to me that people who are high risk during heat waves are clustered around the northern part of the bay with pockets throughout the rest of the bay. 
+
+## Key Assumptions: 
+### My first major assumption is that the characterstics I chose to map are considered people who are high risk during heat waves- I chose these characterstics based on my findings from the interviews and surveys. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by the US Census, so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way.
+ 
+ 
