@@ -129,7 +129,7 @@ bay_pums_example1 <-
 
 ```{r}
 pums_pal <- colorNumeric(
-  palette = "PiYG",
+  palette = "Blues",
   domain = bay_pums_example1$percent_population
 )
 
@@ -214,7 +214,7 @@ bay_pums_example2 <-
 
 ```{r}
 pums_pal <- colorNumeric(
-  palette = "PiYG",
+  palette = "Blues",
   domain = bay_pums_example2$percent_population
 )
 
@@ -300,7 +300,7 @@ bay_pums_example3 <-
 
 ```{r}
 pums_pal <- colorNumeric(
-  palette = "PiYG",
+  palette = "Blues",
   domain = bay_pums_example3$percent_population
 )
 
@@ -386,7 +386,7 @@ bay_pums_example4 <-
 
 ```{r}
 pums_pal <- colorNumeric(
-  palette = "PiYG",
+  palette = "Blues",
   domain = bay_pums_example4$percent_population
 )
 
@@ -441,7 +441,7 @@ sum(bay_pums_example4_sum$population_sum)
 ```
 
 ## Findings:
-### The first map I looked at was the percentage of the population that was on medicare, medicaid, medical assistance, or other government assistance. This search is to target some high risk population during a heat wave- people who are low-income, with a disability, and/or older. This map is useful to see because there is drastic difference in percentage of people when looking at the map. All the green values (40-45%) are in the northern part of the bay and there are pockets of white (30-35%) near the silicon valley area, which is interesting because that is also where the wealthiest zipcodes are too. The second map I looked at were people without college degrees and making under 100K. This is interesting because it has some similarities with the first map but the biggest difference seems to be the largest pockets of these people are more in the valley and not in the bay. The third map I looked at were people without refrigerators and this map shows that most people do have refrigerators and this doesn't really vary with location. The last map I looked at was at another high risk population- people with self care of indepedent living difficulty. This map is similiar to the first where the majority of the green (7-9%) are in the northern part of the bay. These findings demonstrate to me that people who are high risk during heat waves are clustered around the northern part of the bay with pockets throughout the rest of the bay. 
+### The first map I looked at was the percentage of the population that was on medicare, medicaid, medical assistance, or other government assistance. This search is to target some high risk population during a heat wave- people who are low-income, with a disability, and/or older. This map is useful to see because there is drastic difference in percentage of people when looking at the map. All the high values (40-45%) are in the northern part of the bay and there are pockets of medium values (30-35%) near the silicon valley area, which is interesting because that is also where the wealthiest zipcodes are too. The second map I looked at were people without college degrees and making under 100K. This is interesting because it has some similarities with the first map but the biggest difference seems to be the largest pockets of these people are more in the valley and not in the bay. The third map I looked at were people without refrigerators and this map shows that most people do have refrigerators and this doesn't really vary with location. The last map I looked at was at another high risk population- people with self care of indepedent living difficulty. This map is similiar to the first where the majority of the high values (7-9%) are in the northern part of the bay. These findings demonstrate to me that people who are high risk during heat waves are clustered around the northern part of the bay with pockets throughout the rest of the bay. 
 
 ## Key Assumptions: 
 ### My first major assumption is that the characterstics I chose to map are considered people who are high risk during heat waves- I chose these characterstics based on my findings from the interviews and surveys. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by the US Census, so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way.
