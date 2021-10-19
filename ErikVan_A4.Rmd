@@ -118,8 +118,8 @@ san_mateo_education %>%
 ```{r}
 census_ethnicity_categories <- 
   c(
-    "Latinx",
     "White, Not Latinx",
+    "Latinx",
     "Not White, Not Latinx"
   )
 
@@ -213,6 +213,6 @@ san_mateo_final %>%
 ```
  
 ## Comment on Results: 
-### From an ethnicity perspective, there is some disproportionate education attainment in San Mateo in populations 25 years and older. Comparing this graph to the previous one, it seems like many people who identify as white may also identify as latinx- latinx people are proportionally more in the "bachelor's degree or higher" category and proportionally less in the "less than high school diploma" catgeory. It is also surprising to see that people in the "white, not latinx" category make up the majority of "less than high school diploma" when "white alone" race had the least in that category. People who are "Not white, not latinx" is proportionally consistent relative to the total population across all education categories. 
+### From an ethnicity perspective, there is a disproportionate education attainment in San Mateo in populations 25 years and older. Comparing this graph to the previous one, there are many similarities- white people are proportionally more in the "bachelor's degree or higher" category and proportionally less in the "less than high school diploma" catgeory. In addition, people in the "latinx" category make up the majority of "less than high school diploma" when they only make up a small proportion of the total population. People who are "Not white, not latinx" is proportionally consistent relative to the total population across all education categories. 
 
 
