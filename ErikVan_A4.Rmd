@@ -1,0 +1,218 @@
+---
+title: "ErikVan_A4"
+author: "Erik Van"
+date: "10/19/2021"
+output: html_document
+---
+
+# CEE 218X Assignment 4 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r }
+library(tidyverse)
+library(censusapi)
+
+Sys.setenv(CENSUS_KEY="c8aa67e4086b4b5ce3a8717f59faa9a28f611dab")
+
+acs_vars_2019_5yr <-
+  listCensusMetadata(
+    name = "2019/acs/acs5",
+    type = "variables"
+  )
+```
+
+```{r}
+census_race_categories <- 
+  c(
+    "White Alone",
+    "Black or African American",
+    "American Indian and Alaska Native Alone",
+    "Asian Alone",
+    "Native Hawaiian and Other Pacific Islander Alone",
+    "Some Other Race Alone",
+    "Two or More Races"
+  )
+
+san_mateo_education <-
+  1:7 %>% 
+  map_dfr(function(x){
+    getCensus(
+      name = "acs/acs5",
+      vintage = 2019,
+      region = "county:041",
+      regionin = "state:06",
+      vars = paste0("group(C15002",LETTERS[x],")")
+    ) %>%
+      select(!c(GEO_ID,state,NAME) & !ends_with(c("EA","MA","M"))) %>%
+      pivot_longer(
+        ends_with("E"),
+        names_to = "name",
+        values_to = "estimate"
+      ) %>%
+      left_join(
+        acs_vars_2019_5yr %>% 
+          select(name, label)
+      ) %>% 
+      select(-name) %>% 
+      separate(
+        label,
+        into = c(NA,NA,NA,"education"),
+        sep = "!!"
+      ) %>% 
+      filter(!is.na(education)) %>% 
+      mutate(race = census_race_categories[x])
+  })
+```
+
+```{r}
+san_mateo_total <-
+  san_mateo_education %>% 
+  group_by(race) %>% 
+  summarize(estimate = sum(estimate)) %>% 
+  mutate(education = "Total")
+
+san_mateo_education %>% 
+  group_by(education, race) %>% 
+  summarize(estimate = sum(estimate)) %>% 
+  rbind(san_mateo_total) %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = education %>% factor(levels = rev(c("Total",unique(san_mateo_education$education)))),
+      y = estimate,
+      fill = race %>% factor(levels = rev(unique(san_mateo_education$race)))
+    ),
+    stat = "identity",
+    position = "fill"
+  ) +
+  labs(
+    x = "Education Level",
+    y = "Proportion of Population (25 years and older)",
+    title = "San Mateo Education Attainment by Race",
+    fill = "Race"
+  ) +
+  coord_flip() +
+  theme(
+    legend.position = "bottom",
+    legend.direction = "vertical"
+  )  +
+  guides(
+    fill = guide_legend(
+      reverse = T
+    )
+  )
+```
+
+
+## Is there disproportionate education attainment by race in the county?
+### As seen in the visual above, there is some disproportionate education attainment in San Mateo in populations 25 years and older, especially when it comes to the two education level extremes (i.e. less than high school diploma vs. bachelor's degree/higher). The first thing to note is that the population breakdown in San Mateo is heavily skewed towards white people with nearly 80% of the total poplation by white. Despite this, only about 40% of people with less than a high school diploma are white. There is about 10% of people who are "some other race" but people in this category make up nearly 50% of people without high school diplomas. On the other side of the formal education spectrum, white people consist of nearly 85% of bachelor's degree or higher while people in the "some other race category consist of less than 5%. Black or African American people are also underrepresented in the bachelor's degree or higher category. The two middle categories of education level (high school graduate and some college) are more proportional to the population demographic. 
+
+## Key Assumptions: 
+### My first major assumption is that the breakdown of race in this visual is representative of the breakdown of population in San Mateo. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by the US Census, so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way.
+ 
+ 
+
+```{r}
+census_ethnicity_categories <- 
+  c(
+    "Latinx",
+    "White, Not Latinx",
+    "Not White, Not Latinx"
+  )
+
+pop_total = san_mateo_education %>% 
+  group_by(education) %>% 
+  summarise(ed_total = sum(estimate, na.rm = T))
+
+letters = c("H", "I")
+
+san_mateo_education_ethnicity <-
+  1:2 %>% 
+  map_dfr(function(x){
+    getCensus(
+      name = "acs/acs5",
+      vintage = 2019,
+      region = "county:041",
+      regionin = "state:06",
+      vars = paste0("group(C15002",letters[x],")")
+    ) %>%
+      select(!c(GEO_ID,state,NAME) & !ends_with(c("EA","MA","M"))) %>%
+      pivot_longer(
+        ends_with("E"),
+        names_to = "name",
+        values_to = "estimate"
+      ) %>%
+      left_join(
+        acs_vars_2019_5yr %>% 
+          select(name, label)
+      ) %>% 
+      select(-name) %>% 
+      separate(
+        label,
+        into = c(NA,NA,NA,"education"),
+        sep = "!!"
+      ) %>% 
+      filter(!is.na(education)) %>% 
+      mutate(ethnicity = census_ethnicity_categories[x])
+  })
+```
+```{r}
+df = san_mateo_education_ethnicity %>% 
+  group_by(education) %>% 
+  summarise(estimate_total = sum(estimate, na.rm = T))
+
+df_total = left_join(df, pop_total) %>% 
+  mutate(estimate = ed_total - estimate_total) %>% 
+  select(-c(ed_total, estimate_total)) %>% 
+  mutate(county = "041",
+         ethnicity = "Not White, Not Latinx")
+
+san_mateo_final = rbind(san_mateo_education_ethnicity, df_total)
+```
+
+```{r}
+san_mateo_total <-
+  san_mateo_final %>% 
+  group_by(ethnicity) %>% 
+  summarize(estimate = sum(estimate)) %>% 
+  mutate(education = "Total")
+
+san_mateo_final %>% 
+  group_by(education, ethnicity) %>% 
+  summarize(estimate = sum(estimate)) %>% 
+  rbind(san_mateo_total) %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = education %>% factor(levels = rev(c("Total",unique(san_mateo_final$education)))),
+      y = estimate,
+      fill = ethnicity %>% factor(levels = rev(unique(san_mateo_final$ethnicity)))
+    ),
+    stat = "identity",
+    position = "fill"
+  ) +
+  labs(
+    x = "Education Level",
+    y = "Proportion of Population (25 years and older)",
+    title = "San Mateo Education Attainment by ethnicity",
+    fill = "ethnicity"
+  ) +
+  coord_flip() +
+  theme(
+    legend.position = "bottom",
+    legend.direction = "vertical"
+  )  +
+  guides(
+    fill = guide_legend(
+      reverse = T
+    )
+  )
+```
+ 
+## Comment on Results: 
+### From an ethnicity perspective, there is some disproportionate education attainment in San Mateo in populations 25 years and older. Comparing this graph to the previous one, it seems like many people who identify as white may also identify as latinx- latinx people are proportionally more in the "bachelor's degree or higher" category and proportionally less in the "less than high school diploma" catgeory. It is also surprising to see that people in the "white, not latinx" category make up the majority of "less than high school diploma" when "white alone" race had the least in that category. People who are "Not white, not latinx" is proportionally consistent relative to the total population across all education categories. 
+
+
