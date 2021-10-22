@@ -1,0 +1,254 @@
+---
+title: "ErikVan_A5"
+author: "Erik Van"
+date: "10/26/2021"
+output: html_document
+---
+
+# CEE 218X Assignment 5 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+
+```{r}
+library(tidyverse)
+library(censusapi)
+library(sf)
+library(mapview)
+library(tigris)
+
+Sys.setenv(CENSUS_KEY="c8aa67e4086b4b5ce3a8717f59faa9a28f611dab")
+
+acs_vars_2019_5yr <-
+  listCensusMetadata(
+    name = "2019/acs/acs5",
+    type = "variables"
+  )
+```
+
+
+
+```{r}
+library(readxl)
+
+temp <- tempfile()
+download.file("https://oehha.ca.gov/media/downloads/calenviroscreen/document/calenviroscreen40resultsdatadictionaryf2021.zip",destfile = temp)
+
+ces4 <- read_excel(
+  unzip(
+    temp, 
+    "calenviroscreen40resultsdatadictionary_F_2021.xlsx"
+  ), 
+  sheet = "CES4.0FINAL_results"
+)
+
+unlink(temp)
+```
+
+
+```{r}
+bay_county_names <-
+  c(
+    "Alameda",
+    "Contra Costa",
+    "Marin",
+    "Napa",
+    "San Francisco",
+    "San Mateo",
+    "Santa Clara",
+    "Solano",
+    "Sonoma"
+  )
+
+ca_tracts <- tracts("CA", cb = T, progress_bar = F)
+
+ces4_bay_pm25 <-
+  ces4 %>% 
+  filter(`California County` %in% bay_county_names) %>% 
+  select(`Census Tract`, PM2.5) %>% 
+  left_join(
+    ca_tracts %>% 
+      transmute(GEOID = as.numeric(GEOID)), 
+    by = c("Census Tract" = "GEOID")
+  ) %>% 
+  st_as_sf()
+```
+
+# The following is a Bay Area map of PM2.5 Concentrations. 
+
+```{r}
+library(leaflet)
+pm25_pal <- colorNumeric(
+  palette = "Reds",
+  domain = ces4_bay_pm25$PM2.5
+)
+
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = ces4_bay_pm25,
+    fillColor = ~pm25_pal(PM2.5),
+    color = "white",
+    weight = 0.5,
+    fillOpacity = 0.5,
+    label = ~PM2.5
+  )
+```
+
+## Comments on PM2.5 Map 
+### As seen in the above map, the highest PM2.5 concentration in the Bay Area is the Oakland area. There is also a pocket of very high PM2.5 concentration in Napa. There is a general trend that there is higher concentrations of PM2.5 in the center of the bay area (more in-land) as opposed to the edges of the bay area (i.e San Jose and Santa Rosa). 
+
+```{r}
+bay_county_names <-
+  c(
+    "Alameda",
+    "Contra Costa",
+    "Marin",
+    "Napa",
+    "San Francisco",
+    "San Mateo",
+    "Santa Clara",
+    "Solano",
+    "Sonoma"
+  )
+
+ca_tracts <- tracts("CA", cb = T, progress_bar = F)
+
+ces4_bay_asthma <-
+  ces4 %>% 
+  filter(`California County` %in% bay_county_names) %>% 
+  select(`Census Tract`, Asthma) %>% 
+  left_join(
+    ca_tracts %>% 
+      transmute(GEOID = as.numeric(GEOID)), 
+    by = c("Census Tract" = "GEOID")
+  ) %>% 
+  st_as_sf()
+```
+# The following is a Bay Area map of Asthma Concentrations. 
+
+```{r}
+library(leaflet)
+asthma_pal <- colorNumeric(
+  palette = "Reds",
+  domain = ces4_bay_asthma$Asthma
+)
+
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = ces4_bay_asthma,
+    fillColor = ~asthma_pal(Asthma),
+    color = "white",
+    weight = 0.5,
+    fillOpacity = 0.5,
+    label = ~Asthma
+  )
+```
+
+## Comments on Asthma Map 
+### As seen in the above map, the highest asthma concentration in the Bay Area is in Vallejo, between Alameda/San Leandro, and Antioch. There is a general trend that asthma in the bay area is relatively low with pockets of high concentration. These pockets tend to be in the center of the bay area (more in-land) as opposed to the edges of the bay area (i.e San Jose and Santa Rosa).
+
+```{r}
+ces4_bay_pm25_test = ces4_bay_pm25 %>%
+  st_drop_geometry()
+
+ces4_bay_asthma_test = ces4_bay_asthma %>%
+  st_drop_geometry()
+
+ces4_bay_total = ces4_bay_pm25_test %>%
+  left_join(ces4_bay_asthma_test, by = "Census Tract") 
+```
+
+
+# The following is scatter plot with PM2.5 on the x-axis and Asthma on the y-axis in the Bay Area, with a best-fit line.
+
+```{r}
+ggplot(
+  data = ces4_bay_total,
+  aes(
+      x = PM2.5,
+      y = Asthma
+    )
+) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+
+## Comment on the apparent “fitness” of the best-fit line at this stage
+### The best fit line is skewed towards the bottom because of the high concentration of data points on the bottom of the graph. Because of that, the best fit line is underestimating many of the data points above it and doesn't account for most of the asthma points above 100. Overall, this line isn't a good fit for this data. 
+
+
+# Perform a linear regression analysis
+```{r}
+model <- lm(Asthma ~ PM2.5, ces4_bay_total)
+
+summary(model)
+```
+
+## Comment linear regression results
+### With PM2.5 as the x value and asthma as the y value, the regression line is: y = 19.862*x + -116.278. This means that an increase of about 19.862 in PM2.5 is associated with an increase of 1 in asthma. 
+
+### “R-squared” is a measure of the shared variance between the x and y values. Variation in PM2.5 explains 9.606% of the variation in asthma.
+
+
+### Looking at the residuals from the lm() function, the line of best fit is skewed towards underestimation. With a median of -9.61, a min of -54.47, and a max of 182.95, there is a skew towards underestimation. The min and max values don't have a symmetrical distribution and the median was not centered around zero so a linear regression may not be the best fit for this data.   
+
+# The following is a plot of residuals densities
+
+```{r}
+plot(density(residuals(model)))
+```
+
+### Looking at this plot, the model is skewed towards underestimation. The graph does not have a symmetrical distribution and the mean is skewed from the center of zero, which might mean that we don’t have the conditions necessary to meaningfully interpret regression results on the data- a linear regression may not be the best fit for this data.   
+
+
+# Log Scale Transformation
+
+# The following is scatter plot with PM2.5 on the x-axis and log(Asthma) on the y-axis in the Bay Area, with a best-fit line.
+
+```{r}
+ggplot(
+  data = ces4_bay_total,
+  aes(
+      x = PM2.5,
+      y = log(Asthma)
+    )
+) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+
+
+## Comment on the apparent “fitness” of the best-fit line at this stage
+### The best fit line is a lot more centered than in the linear regression. The best fit line seems to capture more of the data and doesn't lean towards over or under estimation. This trend line seems to fit the data more. There are some extremes that the best fit line doesn't capture but a log regression does a better job than the linear regression. 
+
+# Perform a regression analysis
+
+```{r}
+model_log <- lm(log(Asthma) ~ PM2.5, ces4_bay_total)
+
+summary(model_log)
+```
+
+
+## Comment regression results
+### With PM2.5 as the x value and asthma as the y value, the regression line is: y = .35633*x + .69234. This means that an increase of about .35633 in PM2.5 is associated with an increase of 1 in asthma. This correlates better than the linear regression. 
+
+### “R-squared” is a measure of the shared variance between the x and y values. Variation in PM2.5 explains 10.03% of the variation in asthma.
+
+
+### Looking at the residuals from the lm() function, the line of best fit for this plot is a better fit than the linear plot- there is less skew towards over over or under estimation. With a median of .03313, a min of -2.004, and a max of 1.755, the min and max values have a better symmetrical distribution and the median is centered around zero so this regression is a better best fit for this data.   
+
+# The following is a plot of residuals densities
+
+```{r}
+plot(density(residuals(model_log)))
+```
+
+### Looking at this plot, the model has a more symmetrical distribution and the mean is skewed from the center of zero, which indicates a better fit for the data than the linear regression. 
+
