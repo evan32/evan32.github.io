@@ -1,0 +1,71 @@
+---
+title: "ErikVan_A7"
+author: "Erik Van"
+date: " 11/2/2021"
+output: html_document
+---
+
+# CEE 218X Assignment 7 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r}
+library(tigris)
+library(sf)
+library(tidyverse)
+library(mapview)
+library(readxl)
+library(spdep)
+library(spatialreg)
+library(survey)
+
+sf_boundary <-
+  counties("CA", cb = T, progress_bar = F) %>%
+  filter(NAME == "San Francisco")
+
+ca_pumas <-
+  pumas("CA", cb = T, progress_bar = F)
+
+sf_pumas <-
+  ca_pumas %>% 
+  st_centroid() %>% 
+  .[sf_boundary, ] %>% 
+  st_set_geometry(NULL) %>% 
+  left_join(ca_pumas %>% select(GEOID10)) %>% 
+  st_as_sf()
+
+temp <- tempfile()
+download.file("https://www2.census.gov/programs-surveys/acs/data/pums/2019/1-Year/csv_hca.zip",destfile = temp)
+
+pums_hca_2019_1yr <- read_csv(unzip(temp,"psam_h06.csv"))
+
+unlink(temp)
+
+data <- pums_hca_2019_1yr %>% 
+  filter(PUMA %in% sf_pumas$PUMACE10) %>% 
+  mutate(
+    HINCP = as.numeric(HINCP),
+    TEN = factor(TEN),
+    MV = factor(MV)
+  ) %>% 
+  select(
+    HINCP,
+    TEN,
+    MV,
+    starts_with("WGTP")
+  ) %>% 
+  filter_all(all_vars(!is.na(.)))
+
+
+design <- svrepdesign(
+  data = data,
+  type = "ACS",
+  repweights = data[ ,5:84],
+  weights = ~WGTP
+)
+
+```
+
+

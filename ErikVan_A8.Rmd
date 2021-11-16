@@ -1,0 +1,294 @@
+---
+title: "ErikVan_A8"
+author: "Erik Van"
+date: " 11/16/2021"
+output: html_document
+---
+
+# CEE 218X Assignment 8 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r}
+library(tigris)
+library(tidyverse)
+library(tidycensus)
+library(sf)
+library(censusapi)
+library(leaflet)
+library(StatMatch)
+
+Sys.setenv(CENSUS_KEY="c8aa67e4086b4b5ce3a8717f59faa9a28f611dab")
+
+ca_pumas <-
+  pumas("CA", cb = T, progress_bar = F)
+
+bay_county_names <-
+  c(
+    "Alameda",
+    "Contra Costa",
+    "Marin",
+    "Napa",
+    "San Francisco",
+    "San Mateo",
+    "Santa Clara",
+    "Solano",
+    "Sonoma"
+  )
+
+bay_counties <-
+  counties("CA", cb = T, progress_bar = F) %>%
+  filter(NAME %in% bay_county_names)
+
+bay_pumas <-
+  ca_pumas %>% 
+  st_centroid() %>% 
+  .[bay_counties, ] %>% 
+  st_drop_geometry() %>% 
+  left_join(ca_pumas %>% select(GEOID10)) %>% 
+  st_as_sf()
+```
+
+### Marker at the location of the Antioch BART station and highlighted puma of interest
+```{r}
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = bay_pumas,
+    weight = 1,
+    color = "gray",
+    label = ~PUMACE10
+  ) %>% 
+  addMarkers(
+    lng = -121.78025207160294,
+    lat = 37.99580329815977  
+  ) %>% 
+  addPolygons(
+    data = bay_pumas %>% 
+      filter(PUMACE10 == "01309")
+  )
+```
+
+
+```{r}
+pums_2014_2019 <- readRDS("pums_2014_2019_wts.rds")
+  
+pums_bart <- pums_2014_2019 %>%
+  mutate(
+    PWGTP = as.numeric(PWGTP),
+    bart = ifelse(
+      JWTR %in% c("4"),
+      PWGTP,
+      0
+    )
+  ) %>% 
+  group_by(PUMA, year) %>% 
+  summarize(
+    pop = sum(PWGTP),
+    bart = sum(bart)
+  )
+```
+
+### Distribution of 2018 population in the Bay Area PUMAs
+```{r}
+pums_pal <- colorNumeric(
+  palette = "YlOrRd",
+  domain = pums_bart %>% 
+    filter(year == 2018) %>% 
+    pull(pop)
+)
+
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = pums_bart %>% 
+      filter(year == 2018) %>% 
+      right_join(bay_pumas %>% select(PUMA = PUMACE10)) %>% 
+      st_as_sf(),
+    fillColor = ~pums_pal(pop),
+    color = "white",
+    weight = 1,
+    fillOpacity = 0.5,
+    label = ~paste0(PUMA,": Population ", pop)
+  )
+```
+
+### Distribution of 2018 BART commuters in the Bay Area PUMAs
+```{r}
+pums_pal <- colorNumeric(
+  palette = "GnBu",
+  domain = pums_bart %>% 
+    filter(year == 2018) %>% 
+    pull(bart)
+)
+
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = pums_bart %>% 
+      filter(year == 2018) %>% 
+      right_join(bay_pumas %>% select(PUMA = PUMACE10)) %>% 
+      st_as_sf(),
+    fillColor = ~pums_pal(bart),
+    color = "white",
+    weight = 1,
+    fillOpacity = 0.5,
+    label = ~paste0(PUMA,": ", bart, " BART commute riders")
+  )
+```
+
+```{r}
+pums_bart_clean <-
+  pums_bart %>% 
+  select(-pop) %>% 
+  pivot_wider(
+    names_from = year,
+    values_from = bart
+  )
+```
+
+
+```{r}
+obs_matrix <-
+  pums_bart_clean %>% 
+  ungroup() %>% 
+  select(`2014`,`2015`,`2016`,`2017`) %>% 
+  as.matrix()
+
+dist_matrix <- mahalanobis.dist(obs_matrix)
+
+rownames(dist_matrix) <- pums_bart_clean$PUMA
+colnames(dist_matrix) <- pums_bart_clean$PUMA
+
+match <- dist_matrix["01309",] %>% 
+  as.data.frame() %>% 
+  rownames_to_column() %>% 
+  rename(
+    PUMA = rowname,
+    match = "."
+  ) %>% 
+  right_join(
+    pums_bart_clean
+  ) %>% 
+  arrange(match) %>% 
+  .[1:11, ] %>% 
+  left_join(bay_pumas %>% select(PUMA = PUMACE10)) %>% 
+  st_as_sf()
+```
+
+### Apply Mahalanobis matching technique to PUMAs in the Bay Area, using the 2014-2017 bart values, and finding matches to our selected PUMA of interest
+```{r}
+leaflet() %>% 
+  addTiles() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = match[1, ],
+    color = "red",
+    label = ~PUMA
+  ) %>% 
+  addPolygons(
+    data = match[-1, ],
+    label = ~PUMA
+  )
+```
+
+### Plot of ridership compared to similiar PUMAs
+```{r}
+match_pumas <-
+  match %>% 
+  filter(!PUMA %in% c("01309")) %>% 
+  st_drop_geometry() %>% 
+  select(-match) %>% 
+  pivot_longer(
+    -PUMA,
+    names_to = "year",
+    values_to = "bart"
+  ) %>%
+  group_by(
+    year
+  ) %>% 
+  summarize(
+    bart = mean(bart),
+    PUMA = "Similar PUMAs"
+  )
+
+treatment_pumas <-
+  match %>% 
+  filter(PUMA %in% c("01309")) %>% 
+  select(-match) %>% 
+  st_drop_geometry() %>% 
+  pivot_longer(
+    -PUMA,
+    names_to = "year",
+    values_to = "bart"
+  )
+
+rbind(
+  treatment_pumas,
+  match_pumas
+) %>% 
+  ggplot(
+    aes(
+      x = as.numeric(year),
+      y = bart,
+      color = PUMA
+    )
+  ) +
+  geom_line() +
+  geom_vline(xintercept = 2018, linetype = "dashed") +
+  labs(
+    title = "Brentwood/Oakley vs. control neighborhoods, BART ridership",
+    x = "Year",
+    y = "BART commute riders"
+  )
+```
+
+
+### Commentary on graph
+Based on the above graph alone, it seems that the selected PUMA has an increase in BART ridership relative to the control PUMA. It seems that there has been a very significant increase with 2018 ridership being over 3x that of 2017 ridership. Therefore, given the scale of that difference, the averaging of the behavior of the control PUMAs, and the downward ridership trend in the selected PUMA from 2016 to 2017, we will do the below formal difference-in-differences analysis, using lm()
+
+```{r}
+transit_did <-
+  match %>% 
+  st_drop_geometry() %>% 
+  select(-match) %>% 
+  pivot_longer(
+    -PUMA,
+    names_to = "year",
+    values_to = "bart"
+  ) %>% 
+  mutate(
+    year = year %>% as.numeric(),
+    time = ifelse(year >= 2018, 1, 0),
+    treated = ifelse(PUMA == "01309", 1, 0)
+  )
+
+did_reg <- lm(bart ~ treated*time, data = transit_did)
+
+summary(did_reg)
+```
+
+
+### Commentary on difference-in-differences analysis
+
+The Antioch BART station in 2018 has an estimated impact of about 1097 new BART commuters. However, despite this positive impact and the previous plot, the result are not statistically significant because the p-value is incredibly small (i.e. p-value is 7.327e-15, which is much less than 5%). Therefore, no direct conclusions can be derived with only this analysis. 
+
+Looking at the baseline effects, The pre-treatment difference between treatment and control PUMAs is 470 riders. The change in the control PUMAs from pre-treatment to post-treatment is 207 rider. 
+
+
+### Assumptions from analysis
+The following assumptions are important to acknowledge because difference-in-differences analysis depend on a lot of user judgment to construct:
+
+- In the graph comparing ridership with Antioch and similar stations, the average ridership of the other stations were not accounting the fact that each of those 10 other stations had a also may have wide variation. 
+- The analysis looked at ridership leaving Antioch, which may not accurately capture the true impact of the station (i.e. impact on nearby residential, commercial, or community development).
+- Surveyed people chose "Subway or elevated car” in the ACS questionnaire to represent a BART commute trip.
+- The BART station opened in mid-2018, and PUMS responses could have been sampled from earlier in the year. 
+- 4 years of post-treatment was used instead so this analysis may not capture long-term impact.
+- The different sizes of the bay pumas may have obscured the true impact of the Antioch bart station.
+- 10 matching PUMAs were found using Mahalanobis distance, but this could have been fewer or more PUMAs.
+- We only matched based on train ridership but didn't control for other variables, such as employment, income, demographics, etc. 
+- We are using PUMS data which has a lower sample size relative to other possible datasets. 
+
+
