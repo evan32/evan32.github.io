@@ -1,0 +1,265 @@
+---
+title: "Final_Project"
+author: "Carly Davenport, Erik Van"
+date: "12/10/2021"
+output: html_document
+---
+
+# CEE 218X Final Project
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r }
+library(tidyverse)
+library(sf)
+library(tigris)
+library(censusapi)
+library(mapview)
+library(leaflet)
+library(tidycensus)
+library(StatMatch)
+
+library(geojsonsf)
+library(geojson)
+library(plotly)
+library(httr)
+```
+
+## Map area of interest (county level): Alameda County
+```{r}
+bay_county_names <-
+  c(
+    "Alameda",
+    "Contra Costa",
+    "Marin",
+    "Napa",
+    "San Francisco",
+    "San Mateo",
+    "Santa Clara",
+    "Solano",
+    "Sonoma"
+  )
+
+bay_counties <-
+  counties("CA", cb = T, progress_bar = F) %>%
+  filter(NAME %in% bay_county_names)
+
+ca_cities <- places("CA", cb = T, progress_bar = FALSE)
+
+bay_cities <- ca_cities[bay_counties, ]
+
+alameda_county <- filter(bay_counties, NAME=="Alameda")
+mapview(alameda_county)
+```
+
+
+## Map area of interest (city level): Oakland
+```{r}
+oakland_city <- filter(bay_cities, NAME=="Oakland")
+mapview(oakland_city)
+```
+
+
+
+```{r}
+usa_zips <- 
+  zctas(cb = T, progress_bar = F)
+```
+
+## NOTE: Oakland shares some zipcodes with other cities, which don't seem to be included
+
+```{r}
+oakland_zips <-
+  usa_zips %>% 
+  st_centroid() %>% 
+  .[oakland_city, ] %>% 
+  st_drop_geometry() %>% 
+  left_join(usa_zips %>% select(GEOID10)) %>% 
+  st_as_sf()
+
+mapview(oakland_zips)
+```
+
+## COVID Dataset from Alameda County COVID-19 Case/Case Rates by Zip Code GeoJSON API URL: 
+## "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0.geojson"
+
+## COVID Dataset from Alameda County COVID-19 Test Rates by Zip Code GeoJSON API URL: 
+## "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_4.geojson"
+
+
+```{r}
+request1 <- GET("https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0.geojson")
+response1 <- content(request1, as = "text", encoding = "UTF-8")
+covid_data1 <- as.geojson(response1)
+covid_case_data_sf <- geojson_sf(covid_data1)
+
+request2 <- GET("https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_4.geojson")
+response2 <- content(request2, as = "text", encoding = "UTF-8")
+covid_data2 <- as.geojson(response2)
+covid_test_data_sf <- geojson_sf(covid_data2)
+
+# Merge requests
+test_rate_tbl <- covid_test_data_sf %>% 
+  dplyr::select(Zip_Number, TestRates) %>% 
+  st_drop_geometry()
+
+full_covid_data_sf <- full_join(covid_case_data_sf, test_rate_tbl, by = "Zip_Number")
+```
+
+
+## Filter covid data to oakland zip codes
+
+```{r}
+covidData_oakland <- full_covid_data_sf %>% # Used as shapefile for leaflet maps
+  filter(Zip_Number %in% oakland_zips$ZCTA5CE10) %>% 
+  select(c("geometry", "Zip_Number", "CaseRates", "TestRates")) %>%
+  mutate(CaseRates = round(CaseRates), 
+         TestRates = round(TestRates))
+covidData_oakland_nogeom <- st_drop_geometry(covidData_oakland) 
+```
+
+## TO ASK: What is the difference between cases and case rates 
+
+
+## Covid Test Rates in Oakland 
+
+```{r}
+library(BAMMtools)
+k <- unique(round(getJenksBreaks(covidData_oakland_nogeom[,2], 6), digits = -3))
+pal7 <- colorBin("Reds", domain = k, bins = k, reverse = FALSE)
+pal77 <- colorBin("Reds", domain = k, bins = k, reverse = TRUE)
+
+leaflet() %>%
+        addProviderTiles(providers$Stamen.TonerLite) %>% 
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, fillOpacity = 0) %>%
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
+                    fillOpacity = .7,
+                    fillColor = ~pal7(covidData_oakland_nogeom[,3]),
+                    highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
+                    label = paste("Test Rates", covidData_oakland_nogeom[,3], sep = ": ")) %>%
+        addLegend(data = covidData_oakland_nogeom, title = "Test Rates", pal = pal77, 
+                  values = covidData_oakland_nogeom[,3], bins = 5, opacity = 1.0, na.label = "Insufficient Data", 
+                  labFormat = labelFormat(transform = function(x) sort(x, decreasing = TRUE)))
+```
+
+
+## Covid Case Rates in Oakland 
+
+```{r}
+  leaflet() %>%
+        addProviderTiles(providers$Stamen.TonerLite) %>% 
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, fillOpacity = 0) %>%
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
+                    fillOpacity = .7,
+                    fillColor = ~pal7(covidData_oakland_nogeom[,2]),
+                    highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
+                    label = paste("Case Rates", covidData_oakland_nogeom[,2], sep = ": ")) %>%
+        addLegend(data = covidData_oakland_nogeom, title = "Case Rates", pal =  pal77, 
+                  values = covidData_oakland_nogeom[,2], bins = 5, opacity = 1.0, na.label = "Insufficient Data", 
+                  labFormat = labelFormat(transform = function(x) sort(x, decreasing = TRUE)))
+      
+```
+
+
+
+
+
+
+## Pull Census data
+```{r}
+Sys.setenv(CENSUS_KEY="c8aa67e4086b4b5ce3a8717f59faa9a28f611dab")
+
+acs_vars_2019_5yr <-
+  listCensusMetadata(
+    name = "2019/acs/acs5",
+    type = "variables"
+  )
+```
+
+
+```{r}
+census_race_categories <- 
+  c(
+    "White Alone",
+    "Black or African American",
+    "American Indian and Alaska Native Alone",
+    "Asian Alone",
+    "Native Hawaiian and Other Pacific Islander Alone",
+    "Some Other Race Alone",
+    "Two or More Races"
+  )
+
+alameda_income_race <-
+  1:7 %>% 
+  map_dfr(function(x){
+    getCensus(
+      name = "acs/acs5",
+      vintage = 2019,
+      region = "county:001",
+      regionin = "state:06",
+      vars = paste0("group(B19001",LETTERS[x],")")
+    ) %>%
+      select(!c(GEO_ID,state,NAME) & !ends_with(c("EA","MA","M"))) %>%
+      pivot_longer(
+        ends_with("E"),
+        names_to = "name",
+        values_to = "estimate"
+      ) %>%
+      left_join(
+        acs_vars_2019_5yr %>% 
+          select(name, label)
+      ) %>% 
+      select(-name) %>% 
+      separate(
+        label,
+        into = c(NA,NA,"income"),
+        sep = "!!"
+      ) %>% 
+      filter(!is.na(income)) %>% 
+      mutate(race = census_race_categories[x])
+  })
+```
+
+
+```{r}
+alameda_race_total <-
+  alameda_income_race %>% 
+  group_by(race) %>% 
+  summarize(estimate = sum(estimate)) %>% 
+  mutate(income = "Total")
+
+alameda_income_race %>% 
+  group_by(income, race) %>% 
+  summarize(estimate = sum(estimate)) %>% 
+  rbind(alameda_race_total) %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = income %>% factor(levels = rev(c("Total",unique(alameda_income_race$income)))),
+      y = estimate,
+      fill = race %>% factor(levels = rev(unique(alameda_income_race$race)))
+    ),
+    stat = "identity",
+    position = "fill"
+  ) +
+  labs(
+    x = "Household income",
+    y = "Proportion of households",
+    title = "Alameda household income by race",
+    fill = "Race of householder"
+  ) +
+  coord_flip() +
+  theme(
+    legend.position = "bottom",
+    legend.direction = "vertical"
+  )  +
+  guides(
+    fill = guide_legend(
+      reverse = T
+    )
+  )
+```
+
+

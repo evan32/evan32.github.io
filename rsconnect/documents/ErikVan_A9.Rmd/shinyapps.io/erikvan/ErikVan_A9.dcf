@@ -5,9 +5,9 @@ account: erikvan
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 5191197
-bundleId: 5285916
+bundleId: 5285942
 url: https://erikvan.shinyapps.io/ErikVan_A9/
-when: 1637694561.93151
-lastSyncTime: 1637694561.93151
+when: 1637695135.83769
+lastSyncTime: 1637695135.83769
 asMultiple: FALSE
 asStatic: FALSE
