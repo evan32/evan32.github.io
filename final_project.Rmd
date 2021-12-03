@@ -112,7 +112,7 @@ full_covid_data_sf <- full_join(covid_case_data_sf, test_rate_tbl, by = "Zip_Num
 ## Filter covid data to oakland zip codes
 
 ```{r}
-covidData_oakland <- full_covid_data_sf %>% # Used as shapefile for leaflet maps
+covidData_oakland <- full_covid_data_sf %>% 
   filter(Zip_Number %in% oakland_zips$ZCTA5CE10) %>% 
   select(c("geometry", "Zip_Number", "CaseRates", "TestRates")) %>%
   mutate(CaseRates = round(CaseRates), 
@@ -163,10 +163,6 @@ leaflet() %>%
 ```
 
 
-
-
-
-
 ## Pull Census data
 ```{r}
 Sys.setenv(CENSUS_KEY="c8aa67e4086b4b5ce3a8717f59faa9a28f611dab")
@@ -178,7 +174,7 @@ acs_vars_2019_5yr <-
   )
 ```
 
-
+#get census tract data
 ```{r}
 census_race_categories <- 
   c(
@@ -197,8 +193,8 @@ alameda_income_race <-
     getCensus(
       name = "acs/acs5",
       vintage = 2019,
-      region = "county:001",
-      regionin = "state:06",
+      region = "tract:*",
+      regionin = "state:06+county:001",
       vars = paste0("group(B19001",LETTERS[x],")")
     ) %>%
       select(!c(GEO_ID,state,NAME) & !ends_with(c("EA","MA","M"))) %>%
@@ -221,25 +217,41 @@ alameda_income_race <-
       mutate(race = census_race_categories[x])
   })
 ```
-
+## Filter to the tracts that belong to Oakland
 
 ```{r}
-alameda_race_total <-
-  alameda_income_race %>% 
+oakland_tracts <- read_csv("oakland_census_tracts.csv")
+oakland_tracts <- as.numeric(unlist(oakland_tracts))
+oakland_income_race <- alameda_income_race %>% 
+  filter(tract %in% oakland_tracts)
+
+oakland_income_race$tract <- as.numeric(oakland_income_race$tract)
+```
+
+## Plotting equity analysis
+```{r}
+oakland_race_total <-
+  oakland_income_race %>% 
   group_by(race) %>% 
   summarize(estimate = sum(estimate)) %>% 
   mutate(income = "Total")
 
-alameda_income_race %>% 
+oakland_income_total <-
+  oakland_income_race %>% 
+  group_by(income) %>% 
+  summarize(estimate = sum(estimate)) %>% 
+  mutate(income = "Total")
+
+oakland_income_race %>% 
   group_by(income, race) %>% 
   summarize(estimate = sum(estimate)) %>% 
-  rbind(alameda_race_total) %>% 
+  rbind(oakland_race_total) %>% 
   ggplot() +
   geom_bar(
     aes(
-      x = income %>% factor(levels = rev(c("Total",unique(alameda_income_race$income)))),
+      x = income %>% factor(levels = rev(c("Total",unique(oakland_income_race$income)))),
       y = estimate,
-      fill = race %>% factor(levels = rev(unique(alameda_income_race$race)))
+      fill = race %>% factor(levels = rev(unique(oakland_income_race$race)))
     ),
     stat = "identity",
     position = "fill"
@@ -247,7 +259,7 @@ alameda_income_race %>%
   labs(
     x = "Household income",
     y = "Proportion of households",
-    title = "Alameda household income by race",
+    title = "Oakland household income by race",
     fill = "Race of householder"
   ) +
   coord_flip() +
@@ -261,5 +273,110 @@ alameda_income_race %>%
     )
   )
 ```
+## Mention here that we wanted a more specificscope, used CSVs from social explorer which access ACS data
 
 
+## Oakland race vs. tract
+```{r}
+oakland_race_by_tract <-
+  oakland_income_race %>% 
+  select(-income) %>%
+  group_by(tract, race) %>%
+  summarize(estimate = sum(estimate))
+```
+
+## Oakland income vs. tract
+```{r}
+oakland_income_by_tract <-
+  oakland_income_race %>% 
+  select(-race) %>%
+  group_by(tract, income) %>%
+  summarize(estimate = sum(estimate))
+```
+
+
+## Example of plotting Black population in Oakland 
+```{r}
+oakland_black_by_tract <- oakland_race_by_tract %>%
+  filter(race == "Black or African American") %>%
+  select(-race) 
+```
+
+## Breakdown of African American population in Oakland
+```{r}
+ca_tracts <- tracts("CA", cb = T, progress_bar = F)
+
+oakland_black_by_tract_sf <-
+  oakland_black_by_tract %>% 
+  left_join(
+    ca_tracts %>% 
+      transmute(TRACTCE = as.numeric(TRACTCE)),
+    by = c("tract" = "TRACTCE")
+  ) %>% 
+  st_as_sf()
+
+race_pal <- colorNumeric(
+  palette = "Reds",
+  domain = oakland_black_by_tract_sf$oakland_black_by_tract
+)
+
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = oakland_black_by_tract_sf,
+    fillColor = ~race_pal(oakland_black_by_tract$estimate),
+    color = "white",
+    weight = 0.5,
+    fillOpacity = 0.5,
+    label = ~oakland_black_by_tract$estimate
+  ) %>%
+  addLegend(
+    data = oakland_black_by_tract_sf, 
+    pal = race_pal,
+    values = ~oakland_black_by_tract$estimate, 
+    title = "Breakdown of African American population in Oakland"
+  )
+```
+
+## Example of plotting lowest income population in Oakland 
+```{r}
+oakland_low_income_by_tract <- oakland_income_by_tract %>%
+  filter(income == "$10,000 to $14,999") %>%
+  select(-income) 
+```
+
+## Breakdown of lowest income population in Oakland
+```{r}
+ca_tracts <- tracts("CA", cb = T, progress_bar = F)
+
+oakland_low_income_by_tract_sf <-
+  oakland_low_income_by_tract %>% 
+  left_join(
+    ca_tracts %>% 
+      transmute(TRACTCE = as.numeric(TRACTCE)),
+    by = c("tract" = "TRACTCE")
+  ) %>% 
+  st_as_sf()
+
+race_pal <- colorNumeric(
+  palette = "Reds",
+  domain = oakland_low_income_by_tract_sf$oakland_low_income_by_tract
+)
+
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = oakland_low_income_by_tract_sf,
+    fillColor = ~race_pal(oakland_low_income_by_tract$estimate),
+    color = "white",
+    weight = 0.5,
+    fillOpacity = 0.5,
+    label = ~oakland_low_income_by_tract$estimate
+  ) %>%
+  addLegend(
+    data = oakland_low_income_by_tract_sf, 
+    pal = race_pal,
+    values = ~oakland_low_income_by_tract$estimate, 
+    title = "Breakdown of lowest income population ($10,000 to $14,999) in Oakland"
+  )
+```
