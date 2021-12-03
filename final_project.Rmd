@@ -7,6 +7,8 @@ output: html_document
 
 # CEE 218X Final Project
 
+## General Notes: We worked on pulling and formatting the data we needed for our project and made some preliminary graphs (though we plan to include more + analysis of results). Realizing that our covid data is in terms of zipcodes and our other census data is in terms of census tracts, we will have to stick to just using some side-by-side analysis to draw certain conclusion, but we still hope that the results can be informative (and ideally in a convenient dashboard format) 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F, warning = F, message = F)
 ```
@@ -380,3 +382,33 @@ leaflet() %>%
     title = "Breakdown of lowest income population ($10,000 to $14,999) in Oakland"
   )
 ```
+
+## Attempt at Regression Modeling
+
+## Covid cases versus testing
+
+```{r}
+
+ggplot(
+  data = covidData_oakland,
+  aes(
+      x = TestRates,
+      y = CaseRates
+    )
+) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+
+
+```
+
+```{r}
+
+model <- lm(CaseRates ~ TestRates, covidData_oakland)
+
+summary(model)
+
+```
+
+## The model shows based on the p-value that the results are not very usable and accurate, which could also be due to having limited availability (have as many data points as there are zipcodes in Oakland)
