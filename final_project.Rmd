@@ -7,7 +7,15 @@ output: html_document
 
 # CEE 218X Final Project
 
-## General Notes: We worked on pulling and formatting the data we needed for our project and made some preliminary graphs (though we plan to include more + analysis of results). Realizing that our covid data is in terms of zipcodes and our other census data is in terms of census tracts, we will have to stick to just using some side-by-side analysis to draw certain conclusion, but we still hope that the results can be informative (and ideally in a convenient dashboard format) 
+## Key questions:
+
+### What is the relationship between poverty, race, covid rates, and covid testing rates? How do only comparing two of these variables versus all three together change the trend/relationship we see?
+
+#### What is the relationship between race, covid rates, and covid testing rates? How do only comparing two of these variables versus all three together change the trend/relationship we see?
+
+#### Geographically, how does covid rates and testing map across the city of Oakland? What key insights can be drawn from this mapping? 
+
+### General Notes for soft submission: We worked on pulling and formatting the data we needed for our project and made some preliminary graphs (though we plan to include more + analysis of results). Realizing that our covid data is in terms of zipcodes and our other census data is in terms of census tracts, we will have to stick to just using some side-by-side analysis to draw certain conclusion, but we still hope that the results can be informative (and ideally in a convenient dashboard format) 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F, warning = F, message = F)
@@ -69,8 +77,8 @@ mapview(oakland_city)
 usa_zips <- 
   zctas(cb = T, progress_bar = F)
 ```
-
-## NOTE: Oakland shares some zipcodes with other cities, which don't seem to be included
+## Map of Oakland by zipcode 
+### NOTE: Oakland shares some zipcodes with other cities, which don't seem to be included
 
 ```{r}
 oakland_zips <-
@@ -84,11 +92,12 @@ oakland_zips <-
 mapview(oakland_zips)
 ```
 
-## COVID Dataset from Alameda County COVID-19 Case/Case Rates by Zip Code GeoJSON API URL: 
-## "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0.geojson"
+## COVID Cases and Testing in Oakland
+### COVID Dataset from Alameda County COVID-19 Case/Case Rates by Zip Code GeoJSON API URL: 
+### "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0.geojson"
 
-## COVID Dataset from Alameda County COVID-19 Test Rates by Zip Code GeoJSON API URL: 
-## "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_4.geojson"
+### COVID Dataset from Alameda County COVID-19 Test Rates by Zip Code GeoJSON API URL: 
+### "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_4.geojson"
 
 
 ```{r}
@@ -111,7 +120,7 @@ full_covid_data_sf <- full_join(covid_case_data_sf, test_rate_tbl, by = "Zip_Num
 ```
 
 
-## Filter covid data to oakland zip codes
+### Filter covid data to oakland zip codes
 
 ```{r}
 covidData_oakland <- full_covid_data_sf %>% 
@@ -119,17 +128,14 @@ covidData_oakland <- full_covid_data_sf %>%
   select(c("geometry", "Zip_Number", "CaseRates", "TestRates")) %>%
   mutate(CaseRates = round(CaseRates), 
          TestRates = round(TestRates))
-covidData_oakland_nogeom <- st_drop_geometry(covidData_oakland) 
+covidData_oakland_drop_geo <- st_drop_geometry(covidData_oakland) 
 ```
 
-## TO ASK: What is the difference between cases and case rates 
-
-
-## Covid Test Rates in Oakland 
+## Map of Covid Test Rates in Oakland 
 
 ```{r}
 library(BAMMtools)
-k <- unique(round(getJenksBreaks(covidData_oakland_nogeom[,2], 6), digits = -3))
+k <- unique(round(getJenksBreaks(covidData_oakland_drop_geo[,2], 6), digits = -3))
 pal7 <- colorBin("Reds", domain = k, bins = k, reverse = FALSE)
 pal77 <- colorBin("Reds", domain = k, bins = k, reverse = TRUE)
 
@@ -138,16 +144,16 @@ leaflet() %>%
         addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, fillOpacity = 0) %>%
         addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
                     fillOpacity = .7,
-                    fillColor = ~pal7(covidData_oakland_nogeom[,3]),
+                    fillColor = ~pal7(covidData_oakland_drop_geo[,3]),
                     highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
-                    label = paste("Test Rates", covidData_oakland_nogeom[,3], sep = ": ")) %>%
-        addLegend(data = covidData_oakland_nogeom, title = "Test Rates", pal = pal77, 
-                  values = covidData_oakland_nogeom[,3], bins = 5, opacity = 1.0, na.label = "Insufficient Data", 
+                    label = paste("Test Rates", covidData_oakland_drop_geo[,3], sep = ": ")) %>%
+        addLegend(data = covidData_oakland_drop_geo, title = "Test Rates", pal = pal77, 
+                  values = covidData_oakland_drop_geo[,3], bins = 5, opacity = 1.0, na.label = "No Data", 
                   labFormat = labelFormat(transform = function(x) sort(x, decreasing = TRUE)))
 ```
 
 
-## Covid Case Rates in Oakland 
+## Map of Covid Case Rates in Oakland 
 
 ```{r}
   leaflet() %>%
@@ -155,17 +161,17 @@ leaflet() %>%
         addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, fillOpacity = 0) %>%
         addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
                     fillOpacity = .7,
-                    fillColor = ~pal7(covidData_oakland_nogeom[,2]),
+                    fillColor = ~pal7(covidData_oakland_drop_geo[,2]),
                     highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
-                    label = paste("Case Rates", covidData_oakland_nogeom[,2], sep = ": ")) %>%
-        addLegend(data = covidData_oakland_nogeom, title = "Case Rates", pal =  pal77, 
-                  values = covidData_oakland_nogeom[,2], bins = 5, opacity = 1.0, na.label = "Insufficient Data", 
+                    label = paste("Case Rates", covidData_oakland_drop_geo[,2], sep = ": ")) %>%
+        addLegend(data = covidData_oakland_drop_geo, title = "Case Rates", pal =  pal77, 
+                  values = covidData_oakland_drop_geo[,2], bins = 5, opacity = 1.0, na.label = "No Data", 
                   labFormat = labelFormat(transform = function(x) sort(x, decreasing = TRUE)))
       
 ```
 
 
-## Pull Census data
+## Using census data to map income and race in Oakland
 ```{r}
 Sys.setenv(CENSUS_KEY="c8aa67e4086b4b5ce3a8717f59faa9a28f611dab")
 
@@ -176,7 +182,7 @@ acs_vars_2019_5yr <-
   )
 ```
 
-#get census tract data
+### Get census tract data
 ```{r}
 census_race_categories <- 
   c(
@@ -219,7 +225,7 @@ alameda_income_race <-
       mutate(race = census_race_categories[x])
   })
 ```
-## Filter to the tracts that belong to Oakland
+### Filter to the tracts that belong to Oakland
 
 ```{r}
 oakland_tracts <- read_csv("oakland_census_tracts.csv")
@@ -230,7 +236,7 @@ oakland_income_race <- alameda_income_race %>%
 oakland_income_race$tract <- as.numeric(oakland_income_race$tract)
 ```
 
-## Plotting equity analysis
+## Equity analysis of income and race in Oakland
 ```{r}
 oakland_race_total <-
   oakland_income_race %>% 
@@ -275,10 +281,12 @@ oakland_income_race %>%
     )
   )
 ```
-## Mention here that we wanted a more specificscope, used CSVs from social explorer which access ACS data
 
+### Assumptions about above graph: 
 
-## Oakland race vs. tract
+### My first major assumption is that the breakdown of race in this visual is representative of the breakdown of population in Oakland. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by the US Census, so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way.
+
+### Oakland race vs. tract
 ```{r}
 oakland_race_by_tract <-
   oakland_income_race %>% 
@@ -287,7 +295,7 @@ oakland_race_by_tract <-
   summarize(estimate = sum(estimate))
 ```
 
-## Oakland income vs. tract
+### Oakland income vs. tract
 ```{r}
 oakland_income_by_tract <-
   oakland_income_race %>% 
@@ -304,7 +312,7 @@ oakland_black_by_tract <- oakland_race_by_tract %>%
   select(-race) 
 ```
 
-## Breakdown of African American population in Oakland
+### Breakdown of African American population in Oakland
 ```{r}
 ca_tracts <- tracts("CA", cb = T, progress_bar = F)
 
@@ -340,6 +348,49 @@ leaflet() %>%
   )
 ```
 
+## Example of plotting White population in Oakland 
+```{r}
+oakland_white_by_tract <- oakland_race_by_tract %>%
+  filter(race == "White Alone") %>%
+  select(-race) 
+```
+
+### Breakdown of White population in Oakland
+```{r}
+ca_tracts <- tracts("CA", cb = T, progress_bar = F)
+
+oakland_white_by_tract_sf <-
+  oakland_white_by_tract %>% 
+  left_join(
+    ca_tracts %>% 
+      transmute(TRACTCE = as.numeric(TRACTCE)),
+    by = c("tract" = "TRACTCE")
+  ) %>% 
+  st_as_sf()
+
+race_pal <- colorNumeric(
+  palette = "Reds",
+  domain = oakland_white_by_tract_sf$oakland_white_by_tract
+)
+
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = oakland_white_by_tract_sf,
+    fillColor = ~race_pal(oakland_white_by_tract$estimate),
+    color = "white",
+    weight = 0.5,
+    fillOpacity = 0.5,
+    label = ~oakland_white_by_tract$estimate
+  ) %>%
+  addLegend(
+    data = oakland_white_by_tract_sf, 
+    pal = race_pal,
+    values = ~oakland_white_by_tract$estimate, 
+    title = "Breakdown of White population in Oakland"
+  )
+```
+
 ## Example of plotting lowest income population in Oakland 
 ```{r}
 oakland_low_income_by_tract <- oakland_income_by_tract %>%
@@ -347,7 +398,7 @@ oakland_low_income_by_tract <- oakland_income_by_tract %>%
   select(-income) 
 ```
 
-## Breakdown of lowest income population in Oakland
+### Breakdown of lowest income population in Oakland
 ```{r}
 ca_tracts <- tracts("CA", cb = T, progress_bar = F)
 
@@ -383,9 +434,64 @@ leaflet() %>%
   )
 ```
 
-## Attempt at Regression Modeling
 
-## Covid cases versus testing
+## Example of plotting highest income population in Oakland 
+```{r}
+oakland_high_income_by_tract <- oakland_income_by_tract %>%
+  filter(income == "$200,000 or more") %>%
+  select(-income) 
+```
+
+### Breakdown of highest income population in Oakland
+```{r}
+ca_tracts <- tracts("CA", cb = T, progress_bar = F)
+
+oakland_high_income_by_tract_sf <-
+  oakland_high_income_by_tract %>% 
+  left_join(
+    ca_tracts %>% 
+      transmute(TRACTCE = as.numeric(TRACTCE)),
+    by = c("tract" = "TRACTCE")
+  ) %>% 
+  st_as_sf()
+
+race_pal <- colorNumeric(
+  palette = "Reds",
+  domain = oakland_high_income_by_tract_sf$oakland_high_income_by_tract
+)
+
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  addPolygons(
+    data = oakland_high_income_by_tract_sf,
+    fillColor = ~race_pal(oakland_high_income_by_tract$estimate),
+    color = "white",
+    weight = 0.5,
+    fillOpacity = 0.5,
+    label = ~oakland_high_income_by_tract$estimate
+  ) %>%
+  addLegend(
+    data = oakland_high_income_by_tract_sf, 
+    pal = race_pal,
+    values = ~oakland_high_income_by_tract$estimate, 
+    title = "Breakdown of highest income population ($200,000 or more) in Oakland"
+  )
+```
+
+## Findings based on the above maps:
+
+### The city of Oakland is an interesting case study because it is made up of zip codes with large differences in poverty levels as well as many racially segregated neighborhoods. This situation allows us to visualize the impact of Covid-19 on different populations. 
+
+### Comparing the map of Covid test with the map of White and Black populations, it looks like the zipcode with the most test rates is also the zipcode with a high white population as well as a high population of highest income people. The rest of Oakland has roughly the same testing rates.
+
+### Comparing the map of Covid case with the map of White and Black populations, it looks like the zipcode with the most case rates is also the zipcode with a high white population with a relatively lower income population. The lowest covid case rates are in the zipcodes with the highest test rates, which are the population that is mostly white and high income. 
+
+### These preliminary findings are only looking at the highest/lowest income population as well only as white and black people. The population of Oakland is a lot more diverse than that so further investigation is needed. 
+
+
+## Regression Modeling
+
+### Covid cases versus testing
 
 ```{r}
 
@@ -411,4 +517,4 @@ summary(model)
 
 ```
 
-## The model shows based on the p-value that the results are not very usable and accurate, which could also be due to having limited availability (have as many data points as there are zipcodes in Oakland)
+### The model shows based on the p-value that the results are not very usable and accurate, which could also be due to having limited availability (have as many data points as there are zipcodes in Oakland)
