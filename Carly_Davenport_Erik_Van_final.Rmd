@@ -92,12 +92,12 @@ oakland_zips <-
 mapview(oakland_zips)
 ```
 
-## COVID Cases and Testing in Oakland
-### COVID Dataset from Alameda County COVID-19 Case/Case Rates by Zip Code GeoJSON API URL: 
-### "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0.geojson"
+## COVID Cases and Testing in Alameda and Oakland
+ COVID Dataset from Alameda County COVID-19 Case/Case Rates by Zip Code GeoJSON API URL: 
+ "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0.geojson"
 
-### COVID Dataset from Alameda County COVID-19 Test Rates by Zip Code GeoJSON API URL: 
-### "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_4.geojson"
+ COVID Dataset from Alameda County COVID-19 Test Rates by Zip Code GeoJSON API URL: 
+ "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_4.geojson"
 
 
 ```{r}
@@ -116,14 +116,14 @@ test_rate_tbl <- covid_test_data_sf %>%
   dplyr::select(Zip_Number, TestRates) %>% 
   st_drop_geometry()
 
-full_covid_data_sf <- full_join(covid_case_data_sf, test_rate_tbl, by = "Zip_Number")
+full_covid_data_al <- full_join(covid_case_data_sf, test_rate_tbl, by = "Zip_Number")
 ```
 
 
 ### Filter covid data to oakland zip codes
 
 ```{r}
-covidData_oakland <- full_covid_data_sf %>% 
+covidData_oakland <- full_covid_data_al %>% 
   filter(Zip_Number %in% oakland_zips$ZCTA5CE10) %>% 
   select(c("geometry", "Zip_Number", "CaseRates", "TestRates")) %>%
   mutate(CaseRates = round(CaseRates), 
@@ -195,17 +195,17 @@ census_race_categories <-
     "Two or More Races"
   )
 
-alameda_income_race <-
+california_income_race <-
   1:7 %>% 
   map_dfr(function(x){
     getCensus(
       name = "acs/acs5",
       vintage = 2019,
-      region = "tract:*",
-      regionin = "state:06+county:001",
+      region = "zip code tabulation area:*",
+      regionin = "state:06",
       vars = paste0("group(B19001",LETTERS[x],")")
     ) %>%
-      select(!c(GEO_ID,state,NAME) & !ends_with(c("EA","MA","M"))) %>%
+      select(zip_code_tabulation_area, !c(GEO_ID,state,NAME) & !ends_with(c("EA","MA","M"))) %>%
       pivot_longer(
         ends_with("E"),
         names_to = "name",
@@ -224,16 +224,24 @@ alameda_income_race <-
       filter(!is.na(income)) %>% 
       mutate(race = census_race_categories[x])
   })
+
+#get alameda zipcodes only
+alameda_income_race <- california_income_race %>% 
+  filter(zip_code_tabulation_area %in% full_covid_data_al$Zip_Number)
+
+#get oakland zipcodes only
+oakland_income_race <- california_income_race %>% 
+  filter(zip_code_tabulation_area %in% covidData_oakland$Zip_Number)
 ```
 ### Filter to the tracts that belong to Oakland
 
 ```{r}
-oakland_tracts <- read_csv("oakland_census_tracts.csv")
-oakland_tracts <- as.numeric(unlist(oakland_tracts))
-oakland_income_race <- alameda_income_race %>% 
-  filter(tract %in% oakland_tracts)
-
-oakland_income_race$tract <- as.numeric(oakland_income_race$tract)
+# oakland_tracts <- read_csv("oakland_census_tracts.csv")
+# oakland_tracts <- as.numeric(unlist(oakland_tracts))
+# oakland_income_race <- alameda_income_race %>% 
+#   filter(tract %in% oakland_tracts)
+# 
+# oakland_income_race$tract <- as.numeric(oakland_income_race$tract)
 ```
 
 ## Equity analysis of income and race in Oakland
@@ -480,18 +488,18 @@ leaflet() %>%
 
 ## Findings based on the above maps:
 
-### The city of Oakland is an interesting case study because it is made up of zip codes with large differences in poverty levels as well as many racially segregated neighborhoods. This situation allows us to visualize the impact of Covid-19 on different populations. 
+ The city of Oakland is an interesting case study because it is made up of zip codes with large differences in poverty levels as well as many racially segregated neighborhoods. This situation allows us to visualize the impact of Covid-19 on different populations. 
 
-### Comparing the map of Covid test with the map of White and Black populations, it looks like the zipcode with the most test rates is also the zipcode with a high white population as well as a high population of highest income people. The rest of Oakland has roughly the same testing rates.
+ Comparing the map of Covid test with the map of White and Black populations, it looks like the zipcode with the most test rates is also the zipcode with a high white population as well as a high population of highest income people. The rest of Oakland has roughly the same testing rates.
 
-### Comparing the map of Covid case with the map of White and Black populations, it looks like the zipcode with the most case rates is also the zipcode with a high white population with a relatively lower income population. The lowest covid case rates are in the zipcodes with the highest test rates, which are the population that is mostly white and high income. 
+ Comparing the map of Covid case with the map of White and Black populations, it looks like the zipcode with the most case rates is also the zipcode with a high white population with a relatively lower income population. The lowest covid case rates are in the zipcodes with the highest test rates, which are the population that is mostly white and high income. 
 
-### These preliminary findings are only looking at the highest/lowest income population as well only as white and black people. The population of Oakland is a lot more diverse than that so further investigation is needed. 
+ These preliminary findings are only looking at the highest/lowest income population as well only as white and black people. The population of Oakland is a lot more diverse than that so further investigation is needed. 
 
 
-## Regression Modeling
+## Regression Modeling - REDO WITH ALAMEDA COUNTY 
 
-### Covid cases versus testing
+# Covid cases versus testing
 
 ```{r}
 
