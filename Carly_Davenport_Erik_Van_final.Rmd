@@ -116,7 +116,7 @@ test_rate_tbl <- covid_test_data_sf %>%
   dplyr::select(Zip_Number, TestRates) %>% 
   st_drop_geometry()
 
-full_covid_data_al <- full_join(covid_case_data_sf, test_rate_tbl, by = "Zip_Number")
+full_covid_data_al <- full_join(covid_case_data_sf, test_rate_tbl, by = "Zip_Number") 
 ```
 
 
@@ -129,7 +129,94 @@ covidData_oakland <- full_covid_data_al %>%
   mutate(CaseRates = round(CaseRates), 
          TestRates = round(TestRates))
 covidData_oakland_drop_geo <- st_drop_geometry(covidData_oakland) 
+
+
+#remove extra info from alameda covid data
+full_covid_data_al <- full_covid_data_al %>% select(c("geometry", "Zip_Number", "CaseRates", "TestRates")) %>%
+  mutate(CaseRates = round(CaseRates), 
+         TestRates = round(TestRates))
+
 ```
+
+
+## Using census data to map income and race in Oakland
+```{r}
+Sys.setenv(CENSUS_KEY="c8aa67e4086b4b5ce3a8717f59faa9a28f611dab")
+
+acs_vars_2019_5yr <-
+  listCensusMetadata(
+    name = "2019/acs/acs5",
+    type = "variables"
+  )
+```
+
+# Get census data by zipcode
+```{r}
+census_race_categories <- 
+  c(
+    "White Alone",
+    "Black or African American",
+    "American Indian and Alaska Native Alone",
+    "Asian Alone",
+    "Native Hawaiian and Other Pacific Islander Alone",
+    "Some Other Race Alone",
+    "Two or More Races"
+  )
+
+california_income_race <-
+  1:7 %>% 
+  map_dfr(function(x){
+    getCensus(
+      name = "acs/acs5",
+      vintage = 2019,
+      region = "zip code tabulation area:*",
+      regionin = "state:06",
+      vars = paste0("group(B19001",LETTERS[x],")")
+    ) %>%
+      select(zip_code_tabulation_area, !c(GEO_ID,state,NAME) & !ends_with(c("EA","MA","M"))) %>%
+      pivot_longer(
+        ends_with("E"),
+        names_to = "name",
+        values_to = "estimate"
+      ) %>%
+      left_join(
+        acs_vars_2019_5yr %>% 
+          select(name, label)
+      ) %>% 
+      select(-name) %>% 
+      separate(
+        label,
+        into = c(NA,NA,"income"),
+        sep = "!!"
+      ) %>% 
+      filter(!is.na(income)) %>% 
+      mutate(race = census_race_categories[x])
+  })
+```
+
+
+```{r}
+#get alameda zipcodes only
+alameda_income_race <- california_income_race %>% 
+  filter(zip_code_tabulation_area %in% full_covid_data_al$Zip_Number) 
+
+colnames(alameda_income_race)[1] <- "Zip_Number"
+
+#get oakland zipcodes only
+oakland_income_race <- california_income_race %>% 
+  filter(zip_code_tabulation_area %in% covidData_oakland$Zip_Number)
+colnames(oakland_income_race)[1] <- "Zip_Number"
+```
+### Merge Covid and ACS data 
+
+```{r}
+alameda_data <- merge(x = alameda_income_race, y = full_covid_data_al, by = c("Zip_Number")) 
+
+oakland_data <- merge(x = oakland_income_race, y = full_covid_data_al, by = c("Zip_Number")) 
+
+```
+
+
 
 ## Map of Covid Test Rates in Oakland 
 
@@ -182,7 +269,7 @@ acs_vars_2019_5yr <-
   )
 ```
 
-### Get census tract data
+# Get census data by zipcode
 ```{r}
 census_race_categories <- 
   c(
@@ -224,24 +311,28 @@ california_income_race <-
       filter(!is.na(income)) %>% 
       mutate(race = census_race_categories[x])
   })
+```
 
+
+```{r}
 #get alameda zipcodes only
 alameda_income_race <- california_income_race %>% 
-  filter(zip_code_tabulation_area %in% full_covid_data_al$Zip_Number)
+  filter(zip_code_tabulation_area %in% full_covid_data_al$Zip_Number) 
+
+colnames(alameda_income_race)[1] <- "Zip_Number"
 
 #get oakland zipcodes only
 oakland_income_race <- california_income_race %>% 
   filter(zip_code_tabulation_area %in% covidData_oakland$Zip_Number)
+colnames(oakland_income_race)[1] <- "Zip_Number"
 ```
-### Filter to the tracts that belong to Oakland
+### Merge Covid and ACS data 
 
 ```{r}
-# oakland_tracts <- read_csv("oakland_census_tracts.csv")
-# oakland_tracts <- as.numeric(unlist(oakland_tracts))
-# oakland_income_race <- alameda_income_race %>% 
-#   filter(tract %in% oakland_tracts)
-# 
-# oakland_income_race$tract <- as.numeric(oakland_income_race$tract)
+alameda_data <- merge(x = alameda_income_race, y = full_covid_data_al, by = c("Zip_Number")) 
+
+oakland_data <- merge(x = oakland_income_race, y = full_covid_data_al, by = c("Zip_Number")) 
+
 ```
 
 ## Equity analysis of income and race in Oakland
@@ -499,12 +590,36 @@ leaflet() %>%
 
 ## Regression Modeling - REDO WITH ALAMEDA COUNTY 
 
-# Covid cases versus testing
+# Covid cases versus testing(with outliers)
+```{r}
+covid_data_plot <- ggplot(
+  data = full_covid_data_al,
+  aes(
+      x = TestRates,
+      y = CaseRates
+    )
+) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+covid_data_plot %>% ggplotly()
+
+```
 
 ```{r}
 
-ggplot(
-  data = covidData_oakland,
+model <- lm(CaseRates ~ TestRates, full_covid_data_al)
+
+summary(model)
+
+```
+
+#Outliers removed
+
+```{r}
+al_outliers_removed <- full_covid_data_al[-c(15,53,28,27), ]
+covid_data_plot <- ggplot(
+  data = al_outlier_removed,
   aes(
       x = TestRates,
       y = CaseRates
@@ -517,12 +632,17 @@ ggplot(
 
 ```
 
+
+```{r}
+covid_data_plot %>% ggplotly()
+```
+
+
 ```{r}
 
-model <- lm(CaseRates ~ TestRates, covidData_oakland)
+model <- lm(CaseRates ~ TestRates, al_outliers_removed)
 
 summary(model)
 
 ```
 
-### The model shows based on the p-value that the results are not very usable and accurate, which could also be due to having limited availability (have as many data points as there are zipcodes in Oakland)
