@@ -130,6 +130,8 @@ covidData_oakland <- full_covid_data_al %>%
   mutate(CaseRates = round(CaseRates), 
          TestRates = round(TestRates))
 covidData_oakland_drop_geo <- st_drop_geometry(covidData_oakland) 
+saveRDS(covidData_oakland, file = "covidData_oakland.rds")
+saveRDS(covidData_oakland_drop_geo, file = "covidData_oakland_drop_geo.rds")
 
 
 #remove extra info from alameda covid data
@@ -246,7 +248,7 @@ leaflet() %>%
 covid_pal <- colorNumeric(
   palette = "Reds",
   domain = 
-    covidData_oakland$TestRates
+    covidData_oakland$CaseRates
 )
 
 leaflet() %>%
@@ -260,7 +262,7 @@ leaflet() %>%
                   values = covidData_oakland_drop_geo[,2])
 ```
       
-```
+
 
 
 ## Equity analysis of income and race in Oakland
