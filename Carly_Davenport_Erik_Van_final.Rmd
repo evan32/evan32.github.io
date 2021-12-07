@@ -222,39 +222,43 @@ oakland_data <- merge(x = oakland_income_race, y = full_covid_data_al, by = c("Z
 ## Map of Covid Test Rates in Oakland 
 
 ```{r}
-library(BAMMtools)
-k <- unique(round(getJenksBreaks(covidData_oakland_drop_geo[,2], 6), digits = -3))
-pal7 <- colorBin("Reds", domain = k, bins = k, reverse = FALSE)
-pal77 <- colorBin("Reds", domain = k, bins = k, reverse = TRUE)
+covid_pal <- colorNumeric(
+  palette = "Reds",
+  domain = 
+    covidData_oakland$TestRates
+)
 
 leaflet() %>%
         addProviderTiles(providers$Stamen.TonerLite) %>% 
-        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, fillOpacity = 0) %>%
         addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
                     fillOpacity = .7,
-                    fillColor = ~pal7(covidData_oakland_drop_geo[,3]),
+                    fillColor = ~covid_pal(covidData_oakland_drop_geo[,3]),
                     highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
                     label = paste("Test Rates", covidData_oakland_drop_geo[,3], sep = ": ")) %>%
-        addLegend(data = covidData_oakland_drop_geo, title = "Test Rates", pal = pal77, 
-                  values = covidData_oakland_drop_geo[,3], bins = 5, opacity = 1.0, na.label = "No Data", 
-                  labFormat = labelFormat(transform = function(x) sort(x, decreasing = TRUE)))
+        addLegend(data = covidData_oakland_drop_geo, title = "Test Rates", pal = covid_pal, 
+                  values = covidData_oakland_drop_geo[,3])
 ```
 
 
 ## Map of Covid Case Rates in Oakland 
 
 ```{r}
-  leaflet() %>%
+covid_pal <- colorNumeric(
+  palette = "Reds",
+  domain = 
+    covidData_oakland$TestRates
+)
+
+leaflet() %>%
         addProviderTiles(providers$Stamen.TonerLite) %>% 
-        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, fillOpacity = 0) %>%
         addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
                     fillOpacity = .7,
-                    fillColor = ~pal7(covidData_oakland_drop_geo[,2]),
+                    fillColor = ~covid_pal(covidData_oakland_drop_geo[,2]),
                     highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
                     label = paste("Case Rates", covidData_oakland_drop_geo[,2], sep = ": ")) %>%
-        addLegend(data = covidData_oakland_drop_geo, title = "Case Rates", pal =  pal77, 
-                  values = covidData_oakland_drop_geo[,2], bins = 5, opacity = 1.0, na.label = "No Data", 
-                  labFormat = labelFormat(transform = function(x) sort(x, decreasing = TRUE)))
+        addLegend(data = covidData_oakland_drop_geo, title = "Case Rates", pal = covid_pal, 
+                  values = covidData_oakland_drop_geo[,2])
+```
       
 ```
 
