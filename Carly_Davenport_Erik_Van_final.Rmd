@@ -37,8 +37,11 @@ library(plotly)
 library(httr)
 ```
 
-## Map area of interest (county level): Alameda County
 ```{r}
+usa_zips <- 
+  zctas(cb = T, progress_bar = F)
+
+## Map area of interest: Oakland City in Alameda County
 bay_county_names <-
   c(
     "Alameda",
@@ -61,26 +64,9 @@ ca_cities <- places("CA", cb = T, progress_bar = FALSE)
 bay_cities <- ca_cities[bay_counties, ]
 
 alameda_county <- filter(bay_counties, NAME=="Alameda")
-mapview(alameda_county)
-```
 
-
-## Map area of interest (city level): Oakland
-```{r}
 oakland_city <- filter(bay_cities, NAME=="Oakland")
-mapview(oakland_city)
-```
 
-
-
-```{r}
-usa_zips <- 
-  zctas(cb = T, progress_bar = F)
-```
-## Map of Oakland by zipcode 
-### NOTE: Oakland shares some zipcodes with other cities, which don't seem to be included
-
-```{r}
 oakland_zips <-
   usa_zips %>% 
   st_centroid() %>% 
@@ -89,8 +75,23 @@ oakland_zips <-
   left_join(usa_zips %>% select(GEOID10)) %>% 
   st_as_sf()
 
-mapview(oakland_zips)
+leaflet() %>% 
+  addTiles() %>% 
+  addPolygons(
+    data = alameda_county
+  ) %>% 
+  addPolygons(
+    data = oakland_zips,
+    color = "red"
+  ) 
 ```
+
+
+
+
+
+
+
 
 ## COVID Cases and Testing in Alameda and Oakland
  COVID Dataset from Alameda County COVID-19 Case/Case Rates by Zip Code GeoJSON API URL: 
@@ -257,83 +258,6 @@ leaflet() %>%
       
 ```
 
-
-## Using census data to map income and race in Oakland
-```{r}
-Sys.setenv(CENSUS_KEY="c8aa67e4086b4b5ce3a8717f59faa9a28f611dab")
-
-acs_vars_2019_5yr <-
-  listCensusMetadata(
-    name = "2019/acs/acs5",
-    type = "variables"
-  )
-```
-
-# Get census data by zipcode
-```{r}
-census_race_categories <- 
-  c(
-    "White Alone",
-    "Black or African American",
-    "American Indian and Alaska Native Alone",
-    "Asian Alone",
-    "Native Hawaiian and Other Pacific Islander Alone",
-    "Some Other Race Alone",
-    "Two or More Races"
-  )
-
-california_income_race <-
-  1:7 %>% 
-  map_dfr(function(x){
-    getCensus(
-      name = "acs/acs5",
-      vintage = 2019,
-      region = "zip code tabulation area:*",
-      regionin = "state:06",
-      vars = paste0("group(B19001",LETTERS[x],")")
-    ) %>%
-      select(zip_code_tabulation_area, !c(GEO_ID,state,NAME) & !ends_with(c("EA","MA","M"))) %>%
-      pivot_longer(
-        ends_with("E"),
-        names_to = "name",
-        values_to = "estimate"
-      ) %>%
-      left_join(
-        acs_vars_2019_5yr %>% 
-          select(name, label)
-      ) %>% 
-      select(-name) %>% 
-      separate(
-        label,
-        into = c(NA,NA,"income"),
-        sep = "!!"
-      ) %>% 
-      filter(!is.na(income)) %>% 
-      mutate(race = census_race_categories[x])
-  })
-```
-
-
-```{r}
-#get alameda zipcodes only
-alameda_income_race <- california_income_race %>% 
-  filter(zip_code_tabulation_area %in% full_covid_data_al$Zip_Number) 
-
-colnames(alameda_income_race)[1] <- "Zip_Number"
-
-#get oakland zipcodes only
-oakland_income_race <- california_income_race %>% 
-  filter(zip_code_tabulation_area %in% covidData_oakland$Zip_Number)
-colnames(oakland_income_race)[1] <- "Zip_Number"
-```
-### Merge Covid and ACS data 
-
-```{r}
-alameda_data <- merge(x = alameda_income_race, y = full_covid_data_al, by = c("Zip_Number")) 
-
-oakland_data <- merge(x = oakland_income_race, y = full_covid_data_al, by = c("Zip_Number")) 
-
-```
 
 ## Equity analysis of income and race in Oakland
 ```{r}
@@ -592,41 +516,64 @@ leaflet() %>%
 
 # Covid cases versus testing(with outliers)
 ```{r}
-covid_data_plot <- ggplot(
-  data = full_covid_data_al,
+
+#NOTE: ignore estimates if not for income or race group
+alameda_grouping_by_zip1 <-
+  alameda_data %>% 
+  #select(-income) %>%
+  group_by(Zip_Number, TestRates, CaseRates) %>%
+  summarize(estimate = sum(estimate))
+
+
+
+```
+#removing outliers based on the relationship between covid rate and covid test rate
+
+```{r}
+
+covid_data_plot1 <- ggplot(
+  data = alameda_grouping_by_zip1,
   aes(
       x = TestRates,
       y = CaseRates
     )
 ) +
   geom_point() +
-  geom_smooth(method = "lm")
+  geom_smooth(method = "lm") 
 
-covid_data_plot %>% ggplotly()
+covid_data_plot1 %>% ggplotly()
 
-```
-
-```{r}
-
-model <- lm(CaseRates ~ TestRates, full_covid_data_al)
+model <- lm(CaseRates ~ TestRates, alameda_grouping_by_zip1)
 
 summary(model)
 
-```
 
-#Outliers removed
+
+
+```
+# From this we can identify there are some zipcodes with data points that deviate far from the rest of the data points, specifically 94720, 95377, 94621,94613 and 94603, so we will remove these frames from the regression to help improve it
 
 ```{r}
-al_outliers_removed <- full_covid_data_al[-c(15,53,28,27), ]
-covid_data_plot <- ggplot(
-  data = al_outlier_removed,
+alameda_grouping_by_zip1 <-
+  alameda_data %>% 
+  group_by(Zip_Number, TestRates, CaseRates) %>%
+  summarize(estimate = sum(estimate))  %>%
+  filter(!(Zip_Number %in% c(94720,95377, 94621,94603,94613)))
+
+
+covid_data_plot1 <- ggplot(
+  data = alameda_grouping_by_zip1,
   aes(
       x = TestRates,
       y = CaseRates
     )
 ) +
   geom_point() +
-  geom_smooth(method = "lm")
+  geom_smooth(method = "lm") 
+
+covid_data_plot1 %>% ggplotly()
+
+
 
 
 
@@ -634,15 +581,48 @@ covid_data_plot <- ggplot(
 
 
 ```{r}
-covid_data_plot %>% ggplotly()
-```
-
-
-```{r}
-
-model <- lm(CaseRates ~ TestRates, al_outliers_removed)
+model <- lm(CaseRates ~ TestRates, alameda_grouping_by_zip1)
 
 summary(model)
 
 ```
+
+
+
+
+```{r}
+alameda_grouping_by_zip2 <-
+  alameda_data %>% 
+  group_by(Zip_Number, income, CaseRates) %>%
+  summarize(estimate = sum(estimate))  %>%
+  filter(income == "$10,000 to $14,999") %>%
+  filter(!(Zip_Number %in% c(94720,95377, 94621,94603,94613)))
+
+covid_data_plot2 <- ggplot(
+  data = alameda_grouping_by_zip2,
+  aes(
+      x = CaseRates,
+      y = estimate
+    )
+) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(
+    x = "CaseRates",
+    y = "People with annual household income $10,000 to $14,999",
+    title = paste0(" Alameda County Linear Regression of Case Rates and <br> People with annual household income $10,000 to $14,999")
+  )
+
+covid_data_plot2 %>% ggplotly()
+
+```
+
+```{r}
+
+model <- lm(estimate ~ CaseRates, alameda_grouping_by_zip2)
+
+summary(model)
+
+```
+
 
