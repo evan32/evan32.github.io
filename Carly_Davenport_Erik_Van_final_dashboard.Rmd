@@ -229,104 +229,110 @@ Row
 observeEvent({
   input$regression_var1
   input$regression_var2
-},  {
-  #if (input$regression_var1 %in% c("CaseRates", "TestRates")) {
-    # alameda_grouping_by_zip <-
-    #   alameda_data %>%
-    #   group_by(Zip_Number, input$regression_var1, input$regression_var2) %>%
-    #   summarize(estimate = sum(estimate))  %>%
-    #   filter(!(Zip_Number %in% c(94720, 95377, 94621, 94603, 94613)))
+},  { #we check for two cases, if X is CaseRate or TestRate, or if X is race or income bracket
+  if (input$regression_var1 %in% c("CaseRates", "TestRates")) {
+    alameda_grouping_by_zip <-
+      alameda_data %>%
+      group_by(Zip_Number, input$regression_var1, input$regression_var2) %>%
+      summarize(estimate = sum(estimate))  %>%
+      filter(!(Zip_Number %in% c(94720, 95377, 94621, 94603, 94613)))
     
-    covid_data_plot <- ggplot(data = alameda_data,
+    covid_data_plot <- ggplot(data = alameda_grouping_by_zip,
                             aes(
                               x = input$regression_var1,
                               y = input$regression_var2
-                            ))  +
-     geom_point() 
-    #+
-  #   geom_smooth(method = "lm") +
-  #   labs(
-  #     x = toString(input$regression_var1),
-  #     y = toString(input$regression_var2),
-  #     title = paste0(
-  #       " Alameda County Linear Regression of ",
-  #       toString(input$regression_var1)," and ", toString(input$regression_var2))
-  # )
-  #   
-  # 
-  # } else {
-  #   if(input$regression_var1 %in% c(
-  #     "Less than $10,000",
-  #     "$10,000 to $14,999",
-  #     "$15,000 to $19,999",
-  #     "$20,000 to $24,999",
-  #     "$25,000 to $29,999",
-  #     "$30,000 to $34,999",
-  #     "$35,000 to $39,999",
-  #     "$40,000 to $44,999",
-  #     "$45,000 to $49,999",
-  #     "$50,000 to $59,999",
-  #     "$60,000 to $74,999",
-  #     "$75,000 to $99,999",
-  #     "$100,000 to $124,999",
-  #     "$125,000 to $149,999",
-  #     "$150,000 to $199,999",
-  #     "$200,000 or more"
-  #   )) {
-  #     alameda_grouping_by_zip <-
-  #       alameda_data %>%
-  #       group_by(Zip_Number, income, input$regression_var2) %>%
-  #       summarize(estimate = sum(estimate))  %>%
-  #       filter(income == input$regression_var1) %>%
-  #       filter(!(Zip_Number %in% c(94720, 95377, 94621, 94603, 94613)))
-  # 
-  #     covid_data_plot <- ggplot(data = alameda_grouping_by_zip,
-  #                               aes(x = estimate,
-  #                                   y = input$regression_var2)) +
-  #       geom_point() +
-  #       geom_smooth(method = "lm") +
-  #       labs(
-  #         x = toString(input$regression_var1),
-  #         y = toString(input$regression_var2),
-  #         title = paste0(
-  #           " Alameda County Linear Regression of ",
-  #           toString(input$regression_var1),
-  #           " and ",
-  #           toString(input$regression_var2)
-  #         )
-  #       )
-  # 
-  # 
-  # 
-  #   }else{
-  #      alameda_grouping_by_zip <-
-  #       alameda_data %>%
-  #       group_by(Zip_Number, race, input$regression_var2) %>%
-  #       summarize(estimate = sum(estimate))  %>%
-  #       filter(race == input$regression_var1) %>%
-  #       filter(!(Zip_Number %in% c(94720, 95377, 94621, 94603, 94613)))
-  # 
-  #     covid_data_plot <- ggplot(data = alameda_grouping_by_zip,
-  #                               aes(x = estimate,
-  #                                   y = input$regression_var2)) +
-  #       geom_point() +
-  #       geom_smooth(method = "lm") +
-  #       labs(
-  #         x = toString(input$regression_var1),
-  #         y = toString(input$regression_var2),
-  #         title = paste0(
-  #           " Alameda County Linear Regression of ",
-  #           toString(input$regression_var1),
-  #           " and ",
-  #           toString(input$regression_var2)
-  #         )
-  #       )
-  # 
-  #   }
-  # 
-  # }
+                            )) 
+    +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    labs(
+      x = toString(input$regression_var1),
+      y = toString(input$regression_var2),
+      title = paste0(
+        " Alameda County Linear Regression of ",
+        toString(input$regression_var1)," and ", toString(input$regression_var2))
+  )
+    
+
+  } else {
+    if(input$regression_var1 %in% c(
+      "Less than $10,000",
+      "$10,000 to $14,999",
+      "$15,000 to $19,999",
+      "$20,000 to $24,999",
+      "$25,000 to $29,999",
+      "$30,000 to $34,999",
+      "$35,000 to $39,999",
+      "$40,000 to $44,999",
+      "$45,000 to $49,999",
+      "$50,000 to $59,999",
+      "$60,000 to $74,999",
+      "$75,000 to $99,999",
+      "$100,000 to $124,999",
+      "$125,000 to $149,999",
+      "$150,000 to $199,999",
+      "$200,000 or more"
+    )) {
+      alameda_grouping_by_zip <-
+        alameda_data %>%
+        group_by(Zip_Number, income, input$regression_var2) %>%
+        summarize(estimate = sum(estimate))  %>%
+        filter(income == input$regression_var1) %>%
+        filter(!(Zip_Number %in% c(94720, 95377, 94621, 94603, 94613)))
+
+      covid_data_plot <- ggplot(data = alameda_grouping_by_zip,
+                                aes(x = estimate,
+                                    y = input$regression_var2)) +
+        geom_point() +
+        geom_smooth(method = "lm") +
+        labs(
+          x = toString(input$regression_var1),
+          y = toString(input$regression_var2),
+          title = paste0(
+            " Alameda County Linear Regression of ",
+            toString(input$regression_var1),
+            " and ",
+            toString(input$regression_var2)
+          )
+        )
+
+
+
+    }else{
+       alameda_grouping_by_zip <-
+        alameda_data %>%
+        group_by(Zip_Number, race, input$regression_var2) %>%
+        summarize(estimate = sum(estimate))  %>%
+        filter(race == input$regression_var1) %>%
+        filter(!(Zip_Number %in% c(94720, 95377, 94621, 94603, 94613)))
+
+      covid_data_plot <- ggplot(data = alameda_grouping_by_zip,
+                                aes(x = estimate,
+                                    y = input$regression_var2)) +
+        geom_point() +
+        geom_smooth(method = "lm") +
+        labs(
+          x = toString(input$regression_var1),
+          y = toString(input$regression_var2),
+          title = paste0(
+            " Alameda County Linear Regression of ",
+            toString(input$regression_var1),
+            " and ",
+            toString(input$regression_var2)
+          )
+        )
+
+    }
+
+  }
   
-     
+      
+      output$plot <- renderPlotly({
+    covid_data_plot %>% 
+      ggplotly() %>% 
+      config(displayModeBar = F)
+        
+      })
     
    
 })

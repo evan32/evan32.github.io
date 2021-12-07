@@ -459,15 +459,15 @@ alameda_grouping_by_zip2 <-
 covid_data_plot2 <- ggplot(
   data = alameda_grouping_by_zip2,
   aes(
-      x = CaseRates,
-      y = estimate
+      x = estimate,
+      y = CaseRates
     )
 ) +
   geom_point() +
   geom_smooth(method = "lm") +
   labs(
-    x = "CaseRates",
-    y = "People with annual household income $10,000 to $14,999",
+    x = "People with annual household income $10,000 to $14,999",
+    y = "CaseRates",
     title = paste0(" Alameda County Linear Regression of Case Rates and <br> People with annual household income $10,000 to $14,999")
   )
 
@@ -482,5 +482,7 @@ model <- lm(estimate ~ CaseRates, alameda_grouping_by_zip2)
 summary(model)
 
 ```
+
+
 
 
