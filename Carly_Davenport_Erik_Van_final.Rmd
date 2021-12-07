@@ -7,7 +7,9 @@ output: html_document
 
 # CEE 218X Final Project
 ## Link to dashboard:
+nsert link here
 
+## Introduction:
   As we have discussed in class, many urban problems exacerbate the inequalities within an urban system. After over a year and a half of pandemic, Covid-19 still poses a threat to the population’s ability to health, travel, work, and gather, though some are more affected than others. It is no secret that Covid-19 is greatly affecting communities of color and impoverished communities, and these two groups have a lot of overlap. One such community of interest in examining the impact of Covid-19 on vulnerable populations is Oakland, because it contains zip codes with large differences in poverty levels as well as many racially segregated neighborhoods. Oakland is a high impact city to look at because of its large and diverse population. With over 433,000 residents, the city has a relatively equal split between White, Black, and Hispanic/Latino population with a strong Asian presence as well (source 4). In addition, the poverty rate is 16.7%, which is over 5% higher than the national average. 
 
 
@@ -34,7 +36,9 @@ library(httr)
   With Oakland’s demographic, Covid-19 has impacted populations in a disproportionate way. One example of this is seen by comparing the zip codes 94603 and 94618, which are on opposite sides of Oakland. Zip code 94603 has 30% of children living below the poverty level and the highest Covid rate in the city whereas  zip code 94618 has  4% of children living below the poverty level and the lowest Covid rate in the city (source 1). Another key insight about this example is that zip code 94618 is 77% White while zip code 94603 is majority Black or African American (source 2).
   Furthermore, at the City of Oakland Racial Disparities Task Force Town Hall it was mentioned that  in Alameda County, Latinx make up 22% of the general population and 46% of the COVID-19 caseload and African-Americans make up 10% of the general population and 14% of COVID-19 cases (source 3). These startling statistics clearly indicate further need to prioritize researching the impact of Covid-19 on the basis of both race and poverty. Local leaders in Oakland have announced how extremely worried they are about these racial disparities in people of color as well as low-income people, immigrants, people with disabilities, and others (source 5).  There are many factors that could also be indicative of Covid-19 impact, risk, and response, so we were also curious to see how the numbers might also relate with covid testing rates, which could alert community members to infection and allow them to take the necessary precautions to avoid further spread. We plan on finding relationships between these variables as well as map them geographically to provide some insights on Covid-19 in Oakland as well as predict future Covid-19 rates. 
   For this reason, we decided to use Census Data for income and race and ArcGIS Hub data that records Alameda County COVID-19 Cases and Case Rates by Zip Code (https://hub.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0/explore?location=37.679493%2C-121.905640%2C10.88, https://hub.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b/explore?layer=4&location=37.679103%2C-121.905640%2C10.88 ). 
-
+  
+## Mapping Area of Interest: Oakland City in Alameda County
+Below is a map of Alameda County (highlighted in blue). We highlighted Oakland as the area of interest with the red highlighting the different zipcodes in Oakland. 
 
 ```{r}
 usa_zips <- 
@@ -84,15 +88,10 @@ leaflet() %>%
     color = "red"
   ) 
 ```
-  Our ultimate goal was to create a dashboard that makes it easy to view Oakland zipcodes in terms of the presence of a chosen income level, race, COVID testing rate, and COVID case rate. Some key insights we hoped to find were **1) how the amount of COVID testing correlates to covid cases (ie. does testing seem to actually have a strong relationship with covid case rate as many say), 2) does access to testing appear equal on the basis of racial or economic background (ie. what does accessibility seem like?) and 3) also evaluating the disparities in Oakland more generally.** One issue to note was that due to having data only as granular as the zipcode level for Oakland, it was not statistically significant to only provide regression data for the variables based on Oakland zipcodes, so our overall analysis of the trends seen in Oakland through our graphs had to be supplemented with regression results for Alameda county, which does add a variable of inconsistency, but we still felt we were able to draw informative conclusions.
+  
+## Research Question: 
+Our ultimate goal was to create a dashboard that makes it easy to view Oakland zipcodes in terms of the presence of a chosen income level, race, COVID testing rate, and COVID case rate. Some key insights we hoped to find were **1) how the amount of COVID testing correlates to covid cases (ie. does testing seem to actually have a strong relationship with covid case rate as many say), 2) does access to testing appear equal on the basis of racial or economic background (ie. what does accessibility seem like?) and 3) also evaluating the disparities in Oakland more generally.** One issue to note was that due to having data only as granular as the zipcode level for Oakland, it was not statistically significant to only provide regression data for the variables based on Oakland zipcodes, so our overall analysis of the trends seen in Oakland through our graphs had to be supplemented with regression results for Alameda county, which does add a variable of inconsistency, but we still felt we were able to draw informative conclusions.
 Our reflections with specific instances of graphs we wanted to point out are presented below, but the link to our dashboard can be found at the top of this report. 
-
-
-
-
-
-
-
 
 ## COVID Cases and Testing in Alameda and Oakland
  COVID Dataset from Alameda County COVID-19 Case/Case Rates by Zip Code GeoJSON API URL: 
@@ -320,7 +319,7 @@ oakland_income_race %>%
 
 ## Assumptions about the above graph: 
 
- My first major assumption is that the breakdown of race in this visual is representative of the breakdown of population in Oakland. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by the US Census, so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way.
+Our first major assumption is that the breakdown of race in this visual is representative of the breakdown of population in Oakland. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by the US Census, so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way.
 
 ## Examples of interesting plots and findings from our dashboard
 
@@ -360,10 +359,54 @@ oakland_income_race %>%
         data = oakland_target_race_by_zip_sf,
         pal = race_pal,
         values = ~oakland_target_race_by_zip$estimate,
-        title = "Breakdown of population in Oakland"
+        title = "Breakdown of Black or African American population in Oakland"
         )
 ```
 
+
+
+```{r}
+target_income = c("Less than $10,000", "$10,000 to $14,999", "$15,000 to $19,999", "$20,000 to $24,999")
+
+ oakland_target_income_by_zip <- oakland_data %>% 
+       select(Zip_Number, estimate, income) %>%
+       group_by(Zip_Number) %>%
+       mutate(Zip_Number = as.numeric(Zip_Number)) %>%
+      filter(income %in% target_income)  %>%
+       summarize(estimate = sum(estimate, na.rm = TRUE)) 
+      
+
+oakland_target_income_by_zip_sf <- oakland_target_income_by_zip %>% 
+      left_join(
+        usa_zips %>%
+          transmute(GEOID10 = as.numeric(GEOID10)),
+        by = c("Zip_Number" = "GEOID10")
+        ) %>%
+      st_as_sf()
+    
+income_pal <- colorNumeric(
+      palette = "Reds",
+      domain = oakland_target_income_by_zip_sf$oakland_target_income_by_zip
+      )
+    
+      leaflet() %>%
+      addProviderTiles(providers$CartoDB.Positron) %>%
+      addPolygons(
+        data = oakland_target_income_by_zip_sf,
+        fillColor = ~income_pal(oakland_target_income_by_zip$estimate),
+        color = "white",
+        weight = 0.5,
+        fillOpacity = 0.5,
+        label = ~oakland_target_income_by_zip$estimate
+        ) %>%
+      addLegend(
+        data = oakland_target_income_by_zip_sf,
+        pal = income_pal,
+        values = ~oakland_target_income_by_zip$estimate,
+        title = "Oakland Income Breakdown"
+        )
+
+```
 
 
 ## Regression Modeling 
