@@ -28,6 +28,8 @@ library(shiny)
 usa_zips <- zctas(cb = T, progress_bar = F)
 oakland_data <- readRDS("oakland_data.rds")
 alameda_data <- readRDS("alameda_data.rds")
+covidData_oakland <- readRDS("covidData_oakland.rds")
+covidData_oakland_drop_geo <- readRDS("covidData_oakland_drop_geo.rds")
 ```
 
 Inputs {.sidebar}
@@ -45,6 +47,22 @@ selectInput(
   label = "race:",
   choices = c("Native Hawaiian and Other Pacific Islander Alone", "American Indian and Alaska Native Alone", "Black or African American", "Asian Alone", "White Alone", "Some Other Race Alone", "Two or More Races"), 
   selected = "Native Hawaiian and Other Pacific Islander Alone"
+)
+
+selectInput(
+  inputId = "regression_var1", 
+  label = "regression variable 1 (X):",
+  choices = c("CaseRates", "TestRates","Less than $10,000", "$10,000 to $14,999", "$15,000 to $19,999", "$20,000 to $24,999", "$25,000 to $29,999", "$30,000 to $34,999", "$35,000 to $39,999", "$40,000 to $44,999", "$45,000 to $49,999", "$50,000 to $59,999", "$60,000 to $74,999", "$75,000 to $99,999", "$100,000 to $124,999", "$125,000 to $149,999", "$150,000 to $199,999", "$200,000 or more","Native Hawaiian and Other Pacific Islander Alone", "American Indian and Alaska Native Alone", "Black or African American", "Asian Alone", "White Alone", "Some Other Race Alone", "Two or More Races"), 
+  selected = "TestRates"
+  
+)
+
+selectInput(
+  inputId = "regression_var2", 
+  label = "regression variable 2(Y):",
+  choices = c("CaseRates", "TestRates","Less than $10,000", "$10,000 to $14,999", "$15,000 to $19,999", "$20,000 to $24,999", "$25,000 to $29,999", "$30,000 to $34,999", "$35,000 to $39,999", "$40,000 to $44,999", "$45,000 to $49,999", "$50,000 to $59,999", "$60,000 to $74,999", "$75,000 to $99,999", "$100,000 to $124,999", "$125,000 to $149,999", "$150,000 to $199,999", "$200,000 or more","Native Hawaiian and Other Pacific Islander Alone", "American Indian and Alaska Native Alone", "Black or African American", "Asian Alone", "White Alone", "Some Other Race Alone", "Two or More Races"), 
+  selected = "CaseRates"
+  
 )
 ```
 
@@ -79,12 +97,10 @@ observeEvent({
          by = c("Zip_Number" = "GEOID10")
          ) %>%
        st_as_sf()
-
      race_pal <- colorNumeric(
        palette = "Reds",
        domain = oakland_target_race_by_zip_sf$oakland_target_race_by_zip
        )
-
     output$map1 <- renderLeaflet({
       leaflet() %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
@@ -100,12 +116,11 @@ observeEvent({
         data = oakland_target_race_by_zip_sf,
         pal = race_pal,
         values = ~oakland_target_race_by_zip$estimate,
-        title = paste0("Oakland Race Breakdown:", input$target_race)
+        title = paste0("Oakland Race Breakdown: <br>", input$target_race)
         )
     })
 })
 ```
-
 
 Column
 -------------------------------------
@@ -137,12 +152,10 @@ observeEvent({
         by = c("Zip_Number" = "GEOID10")
         ) %>%
       st_as_sf()
-
     income_pal <- colorNumeric(
       palette = "Reds",
       domain = oakland_target_income_by_zip_sf$oakland_target_income_by_zip
       )
-
     output$map2 <- renderLeaflet({
       leaflet() %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
@@ -158,12 +171,55 @@ observeEvent({
         data = oakland_target_income_by_zip_sf,
         pal = income_pal,
         values = ~oakland_target_income_by_zip$estimate,
-        title = paste0("Oakland Income Breakdown:", toString(input$target_income))
+        title = paste0("Oakland Income Breakdown: <br>", toString(input$target_income))
         )
     })
 })
 ```
 
+Column
+-------------------------------------
+
+### Plotting Covid Case rate
+
+```{r}
+covid_pal <- colorNumeric(
+  palette = "Reds",
+  domain = 
+    covidData_oakland$CaseRates
+)
+
+leaflet() %>%
+        addProviderTiles(providers$Stamen.TonerLite) %>% 
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
+                    fillOpacity = .7,
+                    fillColor = ~covid_pal(covidData_oakland_drop_geo[,2]),
+                    highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
+                    label = paste("Case Rates", covidData_oakland_drop_geo[,2], sep = ": ")) %>%
+        addLegend(data = covidData_oakland_drop_geo, title = "Case Rates", pal = covid_pal, 
+                  values = covidData_oakland_drop_geo[,2])
+
+```
 
 
+
+### Plotting Covid Test Rate
+```{r}
+covid_pal <- colorNumeric(
+  palette = "Reds",
+  domain = 
+    covidData_oakland$TestRates
+)
+
+leaflet() %>%
+        addProviderTiles(providers$Stamen.TonerLite) %>% 
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
+                    fillOpacity = .7,
+                    fillColor = ~covid_pal(covidData_oakland_drop_geo[,3]),
+                    highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
+                    label = paste("Test Rates", covidData_oakland_drop_geo[,3], sep = ": ")) %>%
+        addLegend(data = covidData_oakland_drop_geo, title = "Test Rates", pal = covid_pal, 
+                  values = covidData_oakland_drop_geo[,3])
+
+```
 
