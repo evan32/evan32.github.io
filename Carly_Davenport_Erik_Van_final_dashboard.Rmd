@@ -34,12 +34,12 @@ Inputs {.sidebar}
 -------------------------------------
 
 ```{r}
-#checkboxGroupInput(
-#  inputId = "target_income", 
-#  label = "income:",
-#  choices = c("Less than $10,000", "$10,000 to $14,999", "$15,000 to $19,999", "$20,000 #to $24,999", "$25,000 to $29,999", "$30,000 to $34,999", "$35,000 to $39,999", "$40,000 #to $44,999", "$45,000 to $49,999", "$50,000 to $59,999", "$60,000 to $74,999", "$75,000 #to $99,999", "$100,000 to $124,999", "$125,000 to $149,999", "$150,000 to $199,999", #"$200,000 or more"), 
-#  selected = "Less than $10,000"
-#)
+checkboxGroupInput(
+ inputId = "target_income",
+ label = "income:",
+ choices = c("Less than $10,000", "$10,000 to $14,999", "$15,000 to $19,999", "$20,000 to $24,999", "$25,000 to $29,999", "$30,000 to $34,999", "$35,000 to $39,999", "$40,000 to $44,999", "$45,000 to $49,999", "$50,000 to $59,999", "$60,000 to $74,999", "$75,000 to $99,999", "$100,000 to $124,999", "$125,000 to $149,999", "$150,000 to $199,999", "$200,000 or more"),
+ selected = "Less than $10,000"
+)
 selectInput(
   inputId = "target_race", 
   label = "race:",
@@ -48,18 +48,19 @@ selectInput(
 )
 ```
 
+
 Column
 -------------------------------------
 
 ### Plotting Race in Oakland
 
 ```{r}
-leafletOutput("map")
+leafletOutput("map1")
 ```
 
 ```{r, context = "server"}
 observeEvent({
-  #input$target_income
+  input$target_income
   input$target_race
   },  {
      
@@ -84,7 +85,7 @@ observeEvent({
        domain = oakland_target_race_by_zip_sf$oakland_target_race_by_zip
        )
 
-    output$map <- renderLeaflet({
+    output$map1 <- renderLeaflet({
       leaflet() %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
       addPolygons(
@@ -99,11 +100,70 @@ observeEvent({
         data = oakland_target_race_by_zip_sf,
         pal = race_pal,
         values = ~oakland_target_race_by_zip$estimate,
-        title = "Breakdown of population in Oakland"
+        title = paste0("Oakland Race Breakdown:", input$target_race)
         )
     })
 })
 ```
+
+
+Column
+-------------------------------------
+
+### Plotting Income in Oakland
+
+```{r}
+leafletOutput("map2")
+```
+
+```{r, context = "server"}
+observeEvent({
+  input$target_income
+  input$target_race
+  },  {
+     
+     oakland_target_income_by_zip <- oakland_data %>% 
+       select(Zip_Number, estimate, income) %>%
+       group_by(Zip_Number, income) %>%
+       mutate(Zip_Number = as.numeric(Zip_Number)) %>%
+       summarize(estimate = sum(estimate)) %>%
+      filter(income %in% input$target_income) %>%
+        select(-income) 
+      
+      oakland_target_income_by_zip_sf <- oakland_target_income_by_zip %>% 
+      left_join(
+        usa_zips %>%
+          transmute(GEOID10 = as.numeric(GEOID10)),
+        by = c("Zip_Number" = "GEOID10")
+        ) %>%
+      st_as_sf()
+
+    income_pal <- colorNumeric(
+      palette = "Reds",
+      domain = oakland_target_income_by_zip_sf$oakland_target_income_by_zip
+      )
+
+    output$map2 <- renderLeaflet({
+      leaflet() %>%
+      addProviderTiles(providers$CartoDB.Positron) %>%
+      addPolygons(
+        data = oakland_target_income_by_zip_sf,
+        fillColor = ~income_pal(oakland_target_income_by_zip$estimate),
+        color = "white",
+        weight = 0.5,
+        fillOpacity = 0.5,
+        label = ~oakland_target_income_by_zip$estimate
+        ) %>%
+      addLegend(
+        data = oakland_target_income_by_zip_sf,
+        pal = income_pal,
+        values = ~oakland_target_income_by_zip$estimate,
+        title = paste0("Oakland Income Breakdown:", toString(input$target_income))
+        )
+    })
+})
+```
+
 
 
 
