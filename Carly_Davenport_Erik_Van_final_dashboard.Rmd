@@ -60,7 +60,7 @@ selectInput(
 selectInput(
   inputId = "regression_var2", 
   label = "regression variable 2(Y):",
-  choices = c("CaseRates", "TestRates","Less than $10,000", "$10,000 to $14,999", "$15,000 to $19,999", "$20,000 to $24,999", "$25,000 to $29,999", "$30,000 to $34,999", "$35,000 to $39,999", "$40,000 to $44,999", "$45,000 to $49,999", "$50,000 to $59,999", "$60,000 to $74,999", "$75,000 to $99,999", "$100,000 to $124,999", "$125,000 to $149,999", "$150,000 to $199,999", "$200,000 or more","Native Hawaiian and Other Pacific Islander Alone", "American Indian and Alaska Native Alone", "Black or African American", "Asian Alone", "White Alone", "Some Other Race Alone", "Two or More Races"), 
+  choices = c("CaseRates", "TestRates"), 
   selected = "CaseRates"
   
 )
@@ -223,8 +223,10 @@ leaflet() %>%
 
 
 
-### Linear Regression
+### Linear Regression to compare resulting covid case and test rate to otehr factors
 ```{r}
+
+#Need 2 cases : X and Y are both case and/or test rate, X is race/income and Y is case/test rate
 alameda_grouping_by_zip1 <-
   alameda_data %>% 
   group_by(Zip_Number, TestRates, CaseRates) %>%
