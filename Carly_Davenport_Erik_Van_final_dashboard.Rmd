@@ -3,6 +3,7 @@ title: "Carly Davenport/Erik Van CEE218X Final Project "
 runtime: shiny
 output: 
   flexdashboard::flex_dashboard:
+    orientation: rows
     vertical_layout: scroll
 ---
 
@@ -121,8 +122,6 @@ observeEvent({
 })
 ```
 
-
-
 ### Plotting Income in Oakland
 
 ```{r}
@@ -183,18 +182,18 @@ Row
 ```{r}
 covid_pal <- colorNumeric(
   palette = "Reds",
-  domain = 
+  domain =
     covidData_oakland$CaseRates
 )
 
 leaflet() %>%
-        addProviderTiles(providers$Stamen.TonerLite) %>% 
+        addProviderTiles(providers$Stamen.TonerLite) %>%
         addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
                     fillOpacity = .7,
                     fillColor = ~covid_pal(covidData_oakland_drop_geo[,2]),
                     highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
                     label = paste("Case Rates", covidData_oakland_drop_geo[,2], sep = ": ")) %>%
-        addLegend(data = covidData_oakland_drop_geo, title = "Case Rates", pal = covid_pal, 
+        addLegend(data = covidData_oakland_drop_geo, title = "Case Rates", pal = covid_pal,
                   values = covidData_oakland_drop_geo[,2])
 
 ```
@@ -205,30 +204,31 @@ leaflet() %>%
 ```{r}
 covid_pal <- colorNumeric(
   palette = "Reds",
-  domain = 
+  domain =
     covidData_oakland$TestRates
 )
 
 leaflet() %>%
-        addProviderTiles(providers$Stamen.TonerLite) %>% 
+        addProviderTiles(providers$Stamen.TonerLite) %>%
         addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
                     fillOpacity = .7,
                     fillColor = ~covid_pal(covidData_oakland_drop_geo[,3]),
                     highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
                     label = paste("Test Rates", covidData_oakland_drop_geo[,3], sep = ": ")) %>%
-        addLegend(data = covidData_oakland_drop_geo, title = "Test Rates", pal = covid_pal, 
+        addLegend(data = covidData_oakland_drop_geo, title = "Test Rates", pal = covid_pal,
                   values = covidData_oakland_drop_geo[,3])
 
 ```
 
+Row
+-------------------------------------
 
-
-### Linear Regression to compare resulting covid case and test rate to otehr factors
+### Linear Regression to compare resulting covid case and test rate to other factors
 ```{r}
 
-#Need 2 cases : X and Y are both case and/or test rate, X is race/income and Y is case/test rate
+#Need 2 cases : X and Y are both case and/or test rate, X is race/income and Y is case/test rate [is input$regression_var1 %in% c("CaseRate","TestRate")]
 alameda_grouping_by_zip1 <-
-  alameda_data %>% 
+  alameda_data %>%
   group_by(Zip_Number, TestRates, CaseRates) %>%
   summarize(estimate = sum(estimate))  %>%
   filter(!(Zip_Number %in% c(94720,95377, 94621,94603,94613)))
@@ -242,12 +242,14 @@ covid_data_plot1 <- ggplot(
     )
 ) +
   geom_point() +
-  geom_smooth(method = "lm") 
+  geom_smooth(method = "lm")
 
 covid_data_plot1 %>% ggplotly()
 
 
 ```
+
+
 
 ### model summary
 ```{r}
