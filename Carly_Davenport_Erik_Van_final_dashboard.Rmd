@@ -134,13 +134,12 @@ observeEvent({
   input$target_race
   },  {
      
-     oakland_target_income_by_zip <- oakland_data %>% 
+ oakland_target_income_by_zip <- oakland_data %>% 
        select(Zip_Number, estimate, income) %>%
-       group_by(Zip_Number, income) %>%
+       group_by(Zip_Number) %>%
        mutate(Zip_Number = as.numeric(Zip_Number)) %>%
-       summarize(estimate = sum(estimate)) %>%
-      filter(income %in% input$target_income) %>%
-        select(-income) 
+      filter(income %in% input$target_income)  %>%
+       summarize(estimate = sum(estimate, na.rm = TRUE)) 
       
       oakland_target_income_by_zip_sf <- oakland_target_income_by_zip %>% 
       left_join(
@@ -177,7 +176,7 @@ observeEvent({
 Row
 -------------------------------------
 
-### Plotting Covid Case rate
+### Plotting Covid Case rate (Running total over the past 28 days)
 
 ```{r}
 covid_pal <- colorNumeric(
@@ -188,10 +187,10 @@ covid_pal <- colorNumeric(
 
 leaflet() %>%
         addProviderTiles(providers$Stamen.TonerLite) %>%
-        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
-                    fillOpacity = .7,
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.4,
+                    fillOpacity = .8,
                     fillColor = ~covid_pal(covidData_oakland_drop_geo[,2]),
-                    highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
+                    highlight = highlightOptions(weight = 5, fillOpacity = .95, bringToFront =TRUE),
                     label = paste("Case Rates", covidData_oakland_drop_geo[,2], sep = ": ")) %>%
         addLegend(data = covidData_oakland_drop_geo, title = "Case Rates", pal = covid_pal,
                   values = covidData_oakland_drop_geo[,2])
@@ -200,7 +199,7 @@ leaflet() %>%
 
 
 
-### Plotting Covid Test Rate
+### Plotting Covid Test Rate (Running total over the past 28 days)
 ```{r}
 covid_pal <- colorNumeric(
   palette = "Reds",
@@ -210,10 +209,10 @@ covid_pal <- colorNumeric(
 
 leaflet() %>%
         addProviderTiles(providers$Stamen.TonerLite) %>%
-        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
-                    fillOpacity = .7,
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.4,
+                    fillOpacity = .8,
                     fillColor = ~covid_pal(covidData_oakland_drop_geo[,3]),
-                    highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
+                    highlight = highlightOptions(weight = 5, fillOpacity = .95, bringToFront =TRUE),
                     label = paste("Test Rates", covidData_oakland_drop_geo[,3], sep = ": ")) %>%
         addLegend(data = covidData_oakland_drop_geo, title = "Test Rates", pal = covid_pal,
                   values = covidData_oakland_drop_geo[,3])
