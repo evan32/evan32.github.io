@@ -192,7 +192,7 @@ leaflet() %>%
                     fillColor = ~covid_pal(covidData_oakland_drop_geo[,2]),
                     highlight = highlightOptions(weight = 5, fillOpacity = .95, bringToFront =TRUE),
                     label = paste("Case Rates", covidData_oakland_drop_geo[,2], sep = ": ")) %>%
-        addLegend(data = covidData_oakland_drop_geo, title = "Case Rates", pal = covid_pal,
+        addLegend(data = covidData_oakland_drop_geo, title = "Case Rates over <br> past 28 days", pal = covid_pal,
                   values = covidData_oakland_drop_geo[,2])
 
 ```
@@ -214,7 +214,7 @@ leaflet() %>%
                     fillColor = ~covid_pal(covidData_oakland_drop_geo[,3]),
                     highlight = highlightOptions(weight = 5, fillOpacity = .95, bringToFront =TRUE),
                     label = paste("Test Rates", covidData_oakland_drop_geo[,3], sep = ": ")) %>%
-        addLegend(data = covidData_oakland_drop_geo, title = "Test Rates", pal = covid_pal,
+        addLegend(data = covidData_oakland_drop_geo, title = "Test Rates over <br> past 28 days", pal = covid_pal,
                   values = covidData_oakland_drop_geo[,3])
 
 ```

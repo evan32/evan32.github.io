@@ -6,7 +6,7 @@ output: html_document
 ---
 
 # CEE 218X Final Project
-## Link to dashboard:
+## Link to dashboard: https://carly17.shinyapps.io/Carly_Davenport_Erik_Van_final_dashboard/
 ### note: Unfortunately, we did not get our linear regression code to work in dashboard format. Please see our reflection below for regression analysis and our dashboard .rmd file for our attempt
 
 ## Introduction:
@@ -35,7 +35,7 @@ library(httr)
 
   With Oakland’s demographic, Covid-19 has impacted populations in a disproportionate way. One example of this is seen by comparing the zip codes 94603 and 94618, which are on opposite sides of Oakland. Zip code 94603 has 30% of children living below the poverty level and the highest Covid rate in the city whereas  zip code 94618 has  4% of children living below the poverty level and the lowest Covid rate in the city (source 1). Another key insight about this example is that zip code 94618 is 77% White while zip code 94603 is majority Black or African American (source 2).
   Furthermore, at the City of Oakland Racial Disparities Task Force Town Hall it was mentioned that  in Alameda County, Latinx make up 22% of the general population and 46% of the COVID-19 caseload and African-Americans make up 10% of the general population and 14% of COVID-19 cases (source 3). These startling statistics clearly indicate further need to prioritize researching the impact of Covid-19 on the basis of both race and poverty. Local leaders in Oakland have announced how extremely worried they are about these racial disparities in people of color as well as low-income people, immigrants, people with disabilities, and others (source 5).  There are many factors that could also be indicative of Covid-19 impact, risk, and response, so we were also curious to see how the numbers might also relate with covid testing rates, which could alert community members to infection and allow them to take the necessary precautions to avoid further spread. We plan on finding relationships between these variables as well as map them geographically to provide some insights on Covid-19 in Oakland as well as predict future Covid-19 rates. 
-  For this reason, we decided to use Census Data for income and race and ArcGIS Hub data that records Alameda County COVID-19 Cases and Case Rates by Zip Code (https://hub.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0/explore?location=37.679493%2C-121.905640%2C10.88, https://hub.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b/explore?layer=4&location=37.679103%2C-121.905640%2C10.88 ). 
+  For this reason, we decided to use Census Data for income and race and ArcGIS Hub data that records Alameda County COVID-19 Cases and Case Rates over the past 28 Days by Zip Code (https://hub.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0/explore?location=37.679493%2C-121.905640%2C10.88, https://hub.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b/explore?layer=4&location=37.679103%2C-121.905640%2C10.88 ). 
   
 ## Mapping Area of Interest: Oakland City in Alameda County
 Below is a map of Alameda County (highlighted in blue). We highlighted Oakland as the area of interest with the red highlighting the different zipcodes in Oakland. 
@@ -411,15 +411,14 @@ income_pal <- colorNumeric(
 ```
 
 
-## Regression Modeling 
+# Regression Modeling 
 
- We noticed that when trying to see the relationship of COVID cases versus COVID testing that outliers were present and make the results less relevant, so we wanted to find which zipcodes caused these outliers and removed them to allow the results to be more accurate
+ Before beginning our regression analysis, we noticed that when trying to see the relationship of COVID cases versus COVID testing that several outliers were present and made the results less relevant, so we wanted to find which zipcodes caused these outliers and removed them to allow the results to be more accurate.
 ```{r}
 
 #NOTE: ignore estimates if not for income or race group
 alameda_grouping_by_zip1 <-
   alameda_data %>% 
-  #select(-income) %>%
   group_by(Zip_Number, TestRates, CaseRates) %>%
   summarize(estimate = sum(estimate))
 
@@ -427,7 +426,7 @@ alameda_grouping_by_zip1 <-
 
 ```
 
-
+Below is a plot of all the Alameda zipcode data:
 ```{r}
 
 covid_data_plot1 <- ggplot(
@@ -450,7 +449,9 @@ summary(model)
 
 
 ```
- From this we can identify there are some zipcodes with data points that deviate far from the rest of the data points, specifically 94720, 95377, 94621,94613 and 94603, so we will remove these frames from the regression to help improve it
+ From this we can identify there are some zipcodes with data points that deviate far from the rest of the data points, specifically 94720, 95377, 94621,94613 and 94603, which are significatly higher either in terms of test rate or case rate, so we will remove these frames from the regression to hopefully help improve it.
+ 
+# Correlation between TestRates and CaseRates with Outliers Removed
 
 ```{r}
 alameda_grouping_by_zip1 <-
@@ -477,7 +478,7 @@ covid_data_plot1 %>% ggplotly()
 
 
 ```
-
+We now see that the graph looks better
 
 ```{r}
 model <- lm(CaseRates ~ TestRates, alameda_grouping_by_zip1)
@@ -485,10 +486,12 @@ model <- lm(CaseRates ~ TestRates, alameda_grouping_by_zip1)
 summary(model)
 
 ```
-As we can see, removing the outliers changed the trend of the graph, and so now we are ready for analysis. 
+# Results
+As we can see, removing the outliers changed the trend of the graph, and so now we are ready for analysis. The linear regression appears to imply an association between Test Rates and Case Rates. More specifically, “An increase of Covid Testing Rates over the past 28 days by 1 unit is associated with an decrease of Covid Case Rates over the past 28 days by -0.92”. Furthermore, we see that the p-value is less than .05, so the results seem statistically significant, although the residuals are not centered around 0,bringing into question some of the validity of this correlation.
 
 
 
+# Correlation between Case Rates and Low Income (under $25k annually)
 ```{r}
 target_income = c("Less than $10,000", "$10,000 to $14,999", "$15,000 to $19,999", "$20,000 to $24,999")
 alameda_grouping_by_zip2 <-
@@ -524,7 +527,89 @@ model <- lm(estimate ~ CaseRates, alameda_grouping_by_zip2)
 summary(model)
 
 ```
+# Results
+ The linear regression appears to imply an association between the number of people making below $25,000 annually and Covid Case Rates over the past 28 days. More specifically, “An increase of the number of people making below 25,000 annually by 1 unit is associated with an increase of covid case rates over the past 28 days by .05. However, while the p-value seems to indicate statistical significance, we see that the residuals are not centered around 0, signaling that this claim is not necessarily accurate and would require further exploration.
 
+
+# Correlation between Test Rates for Black and White Population
+```{r}
+
+alameda_grouping_by_zip3 <-
+  alameda_data %>% 
+  group_by(Zip_Number, race, TestRates) %>%
+  filter(race %in% "Black or African American")  %>%
+  summarize(estimate = sum(estimate, na.rm = TRUE)) %>%
+  filter(!(Zip_Number %in% c(94720,95377, 94621,94603,94613)))
+
+covid_data_plot3 <- ggplot(
+  data = alameda_grouping_by_zip3,
+  aes(
+      x = estimate,
+      y = TestRates
+    )
+) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(
+    x = "Number of Black people",
+    y = "TestRates",
+    title = paste0(" Alameda County Linear Regression of Number of Black People and <br> Test Rates")
+  )
+
+covid_data_plot3 %>% ggplotly()
+
+```
+
+```{r}
+
+model <- lm(estimate ~ TestRates, alameda_grouping_by_zip3)
+
+summary(model)
+
+```
+
+
+```{r}
+
+alameda_grouping_by_zip4 <-
+  alameda_data %>% 
+  group_by(Zip_Number, race, TestRates) %>%
+  filter(race %in% "White Alone")  %>%
+  summarize(estimate = sum(estimate, na.rm = TRUE)) %>%
+  filter(!(Zip_Number %in% c(94720,95377, 94621,94603,94613)))
+
+covid_data_plot3 <- ggplot(
+  data = alameda_grouping_by_zip4,
+  aes(
+      x = estimate,
+      y = TestRates
+    )
+) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(
+    x = "Number of White people",
+    y = "TestRates",
+    title = paste0(" Alameda County Linear Regression of Number of White People and <br> Test Rates")
+  )
+
+covid_data_plot3 %>% ggplotly()
+
+```
+
+```{r}
+
+model <- lm(estimate ~ TestRates, alameda_grouping_by_zip4)
+
+summary(model)
+
+```
+# Analysis: 
+As we can see from the model summary, in both cases the P-value and residuals imply the results are not statistically significant, which actually underlines some ambiguity on how much access to COVID tests is or isn't a problem, at least in Alameda county. In the graph of Black population versus test rates, we see that while some zipcodes with more Black people had lower test rates, we also see areas with less Black people having both significantly more and less covid testing. For the White population, the spread seems fairly even , with both highs and lows in test rates in varying population counts. However, there are many caveats to this, and should not be to say that covid testing is or is not as accessible to a certain racial group, but rather that we need more data. Additionally, other factors could boost or lower testing numbers unrelated to race, like if a given zipcode simply has more or less people in it, which is a downside of our dataset providing raw number rather than a percentage.
+
+
+# Overall Analysis of Chosen Regression graphs
+Overall, it was nice to see that covid testing does appear to have a positive association with a decrease in covid cases, although the correlation did not seem particularly strong, and furthermore it was hard to make conclusions about the correlations between other racial and economic backgrounds and covid test accessibility and case rates. I think a large reason for this is because the association must be more loosely made, since we do not know which of the covid cases or tests were from people of different economic or racial groups. However, I still think there was knowledge to be gained from this project and results analysis by understanding the complexity and realizing areas where we should go deeper while also weighing other concerns that come with trying to get clearer data, like anonymity (for example, it could be quite problematic to some people to report their racial or economic identity along with a covid test or case report in a publicly provided dataset).
 
 Sources: 
 https://calmatters.org/health/coronavirus/2021/06/california-covid-inequality-oakland-rockridge/ 
