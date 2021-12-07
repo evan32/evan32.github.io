@@ -101,6 +101,7 @@ Our reflections with specific instances of graphs we wanted to point out are pre
  COVID Dataset from Alameda County COVID-19 Test Rates by Zip Code GeoJSON API URL: 
  "https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_4.geojson"
 
+The covid case and testing rates are a running total of the past 28 days. 
 
 ```{r}
 request1 <- GET("https://opendata.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0.geojson")
@@ -238,10 +239,10 @@ covid_pal <- colorNumeric(
 
 leaflet() %>%
         addProviderTiles(providers$Stamen.TonerLite) %>% 
-        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
-                    fillOpacity = .7,
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.4,
+                    fillOpacity = .8,
                     fillColor = ~covid_pal(covidData_oakland_drop_geo[,3]),
-                    highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
+                    highlight = highlightOptions(weight = 5, fillOpacity = .95, bringToFront =TRUE),
                     label = paste("Test Rates", covidData_oakland_drop_geo[,3], sep = ": ")) %>%
         addLegend(data = covidData_oakland_drop_geo, title = "Test Rates", pal = covid_pal, 
                   values = covidData_oakland_drop_geo[,3])
@@ -259,10 +260,10 @@ covid_pal <- colorNumeric(
 
 leaflet() %>%
         addProviderTiles(providers$Stamen.TonerLite) %>% 
-        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.3,
-                    fillOpacity = .7,
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.4,
+                    fillOpacity = .8,
                     fillColor = ~covid_pal(covidData_oakland_drop_geo[,2]),
-                    highlight = highlightOptions(weight = 5, fillOpacity = 1.0, bringToFront =TRUE),
+                    highlight = highlightOptions(weight = 5, fillOpacity = .95, bringToFront =TRUE),
                     label = paste("Case Rates", covidData_oakland_drop_geo[,2], sep = ": ")) %>%
         addLegend(data = covidData_oakland_drop_geo, title = "Case Rates", pal = covid_pal, 
                   values = covidData_oakland_drop_geo[,2])
