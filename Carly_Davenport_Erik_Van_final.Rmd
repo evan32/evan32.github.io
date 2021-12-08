@@ -7,7 +7,8 @@ output: html_document
 
 # CEE 218X Final Project
 ## Link to dashboard: https://carly17.shinyapps.io/Carly_Davenport_Erik_Van_final_dashboard/
-### note: Unfortunately, we did not get our linear regression code to work in dashboard format. Please see our reflection below for regression analysis and our dashboard .rmd file for our attempt
+#### Note: 
+Unfortunately, we did not get our linear regression code to work in dashboard format. Please see our reflection below for regression analysis and our dashboard .rmd file for our attempt
 
 ## Introduction:
   As we have discussed in class, many urban problems exacerbate the inequalities within an urban system. After over a year and a half of pandemic, Covid-19 still poses a threat to the population’s ability to health, travel, work, and gather, though some are more affected than others. It is no secret that Covid-19 is greatly affecting communities of color and impoverished communities, and these two groups have a lot of overlap. One such community of interest in examining the impact of Covid-19 on vulnerable populations is Oakland, because it contains zip codes with large differences in poverty levels as well as many racially segregated neighborhoods. Oakland is a high impact city to look at because of its large and diverse population. With over 433,000 residents, the city has a relatively equal split between White, Black, and Hispanic/Latino population with a strong Asian presence as well (source 4). In addition, the poverty rate is 16.7%, which is over 5% higher than the national average. 
@@ -34,7 +35,9 @@ library(httr)
 ```
 
   With Oakland’s demographic, Covid-19 has impacted populations in a disproportionate way. One example of this is seen by comparing the zip codes 94603 and 94618, which are on opposite sides of Oakland. Zip code 94603 has 30% of children living below the poverty level and the highest Covid rate in the city whereas  zip code 94618 has  4% of children living below the poverty level and the lowest Covid rate in the city (source 1). Another key insight about this example is that zip code 94618 is 77% White while zip code 94603 is majority Black or African American (source 2).
+  
   Furthermore, at the City of Oakland Racial Disparities Task Force Town Hall it was mentioned that  in Alameda County, Latinx make up 22% of the general population and 46% of the COVID-19 caseload and African-Americans make up 10% of the general population and 14% of COVID-19 cases (source 3). These startling statistics clearly indicate further need to prioritize researching the impact of Covid-19 on the basis of both race and poverty. Local leaders in Oakland have announced how extremely worried they are about these racial disparities in people of color as well as low-income people, immigrants, people with disabilities, and others (source 5).  There are many factors that could also be indicative of Covid-19 impact, risk, and response, so we were also curious to see how the numbers might also relate with covid testing rates, which could alert community members to infection and allow them to take the necessary precautions to avoid further spread. We plan on finding relationships between these variables as well as map them geographically to provide some insights on Covid-19 in Oakland as well as predict future Covid-19 rates. 
+  
   For this reason, we decided to use Census Data for income and race and ArcGIS Hub data that records Alameda County COVID-19 Cases and Case Rates over the past 28 Days by Zip Code (https://hub.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b_0/explore?location=37.679493%2C-121.905640%2C10.88, https://hub.arcgis.com/datasets/5d6bf4760af64db48b6d053e7569a47b/explore?layer=4&location=37.679103%2C-121.905640%2C10.88 ). 
   
 ## Mapping Area of Interest: Oakland City in Alameda County
@@ -91,6 +94,7 @@ leaflet() %>%
   
 ## Research Question: 
 Our ultimate goal was to create a dashboard that makes it easy to view Oakland zipcodes in terms of the presence of a chosen income level, race, COVID testing rate, and COVID case rate. Some key insights we hoped to find were **1) how the amount of COVID testing correlates to covid cases (ie. does testing seem to actually have a strong relationship with covid case rate as many say), 2) does access to testing appear equal on the basis of racial or economic background (ie. what does accessibility seem like?) and 3) also evaluating the disparities in Oakland more generally.** One issue to note was that due to having data only as granular as the zipcode level for Oakland, it was not statistically significant to only provide regression data for the variables based on Oakland zipcodes, so our overall analysis of the trends seen in Oakland through our graphs had to be supplemented with regression results for Alameda county, which does add a variable of inconsistency, but we still felt we were able to draw informative conclusions.
+
 Our reflections with specific instances of graphs we wanted to point out are presented below, but the link to our dashboard can be found at the top of this report. 
 
 ## COVID Cases and Testing in Alameda and Oakland
@@ -226,51 +230,6 @@ oakland_data <- merge(x = oakland_income_race, y = full_covid_data_al, by = c("Z
 ```
 
 
-
-## Map of Covid Test Rates in Oakland 
-
-```{r}
-covid_pal <- colorNumeric(
-  palette = "Reds",
-  domain = 
-    covidData_oakland$TestRates
-)
-
-leaflet() %>%
-        addProviderTiles(providers$Stamen.TonerLite) %>% 
-        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.4,
-                    fillOpacity = .8,
-                    fillColor = ~covid_pal(covidData_oakland_drop_geo[,3]),
-                    highlight = highlightOptions(weight = 5, fillOpacity = .95, bringToFront =TRUE),
-                    label = paste("Test Rates", covidData_oakland_drop_geo[,3], sep = ": ")) %>%
-        addLegend(data = covidData_oakland_drop_geo, title = "Test Rates over <br> past 28 days", pal = covid_pal, 
-                  values = covidData_oakland_drop_geo[,3])
-```
-
-
-## Map of Covid Case Rates in Oakland 
-
-```{r}
-covid_pal <- colorNumeric(
-  palette = "Reds",
-  domain = 
-    covidData_oakland$CaseRates
-)
-
-leaflet() %>%
-        addProviderTiles(providers$Stamen.TonerLite) %>% 
-        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.4,
-                    fillOpacity = .8,
-                    fillColor = ~covid_pal(covidData_oakland_drop_geo[,2]),
-                    highlight = highlightOptions(weight = 5, fillOpacity = .95, bringToFront =TRUE),
-                    label = paste("Case Rates", covidData_oakland_drop_geo[,2], sep = ": ")) %>%
-        addLegend(data = covidData_oakland_drop_geo, title = "Case Rates over <br> past 28 days", pal = covid_pal, 
-                  values = covidData_oakland_drop_geo[,2])
-```
-      
-
-
-
 # Equity analysis of income and race in Oakland
 ```{r}
 oakland_race_total <-
@@ -317,13 +276,58 @@ oakland_income_race %>%
   )
 ```
 
+## Reflections on Equity Analysis: 
+  As seen in the visual above, there is disproportionate income in Oakland across race, especially when it comes to the two income level extremes (i.e. less than $10,000 vs. $200,000 or more). The first thing to note is that the population breakdown in Oakland is fairly diverse- the White population makes up the largest proportion of households but there is also a large fraction of Black and Asian populations. Despite being close to 45% of Oakland's population, only about 20% of people making less than $10,000 are White and nearly 75% of people making more than $200,000 are White. This shows the large disparity in regards to White population and income. In addition, the Black population consist of roughly 25% of the total population but has the largest fraction of people making less than $10,000 (at about 45%) and the smallest fraction of people making greater than $200,000 (at about 7%). The other racial groups follow a similiar pattern as the Black population to a lesser degree with the exception of the "Two or More Races", which was fairly proportional to its population size. 
+
 ## Assumptions about the above graph: 
 
-Our first major assumption is that the breakdown of race in this visual is representative of the breakdown of population in Oakland. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by the US Census, so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way.
+  Our first major assumption is that the breakdown of race in this visual is representative of the breakdown of population in Oakland. Another assumption is the validity, completeness, and accuracy of the data set used. This data set is gathered and produced by the US Census, so we are assuming it is from a credible source on the topic and was gathered in a fair and unbiased way.
 
-## Examples of interesting plots and findings from our dashboard
+# Pre-Regression Findings from some example plots and findings from our dashboard
+  The maps below resonate similar themes as the equity analysis performed. The insights gained from these map is geographically where these populations are located so we can do a general level inspection relative to covid cases and covid test rates. After these general observations, we performed regression analysis (see below).
 
-#Number of Black people in Oakland
+## Map of Covid Test Rates in Oakland 
+
+```{r}
+covid_pal <- colorNumeric(
+  palette = "Reds",
+  domain = 
+    covidData_oakland$TestRates
+)
+
+leaflet() %>%
+        addProviderTiles(providers$Stamen.TonerLite) %>% 
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.4,
+                    fillOpacity = .8,
+                    fillColor = ~covid_pal(covidData_oakland_drop_geo[,3]),
+                    highlight = highlightOptions(weight = 5, fillOpacity = .95, bringToFront =TRUE),
+                    label = paste("Test Rates", covidData_oakland_drop_geo[,3], sep = ": ")) %>%
+        addLegend(data = covidData_oakland_drop_geo, title = "Test Rates over <br> past 28 days", pal = covid_pal, 
+                  values = covidData_oakland_drop_geo[,3])
+```
+
+## Map of Covid Case Rates in Oakland 
+
+```{r}
+covid_pal <- colorNumeric(
+  palette = "Reds",
+  domain = 
+    covidData_oakland$CaseRates
+)
+
+leaflet() %>%
+        addProviderTiles(providers$Stamen.TonerLite) %>% 
+        addPolygons(data = covidData_oakland, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.4,
+                    fillOpacity = .8,
+                    fillColor = ~covid_pal(covidData_oakland_drop_geo[,2]),
+                    highlight = highlightOptions(weight = 5, fillOpacity = .95, bringToFront =TRUE),
+                    label = paste("Case Rates", covidData_oakland_drop_geo[,2], sep = ": ")) %>%
+        addLegend(data = covidData_oakland_drop_geo, title = "Case Rates over <br> past 28 days", pal = covid_pal, 
+                  values = covidData_oakland_drop_geo[,2])
+```
+
+
+# Breakdown of Black people in Oakland
 
 ```{r}
      oakland_target_race_by_zip <- oakland_data %>% 
@@ -362,6 +366,48 @@ Our first major assumption is that the breakdown of race in this visual is repre
         pal = race_pal,
         values = ~oakland_target_race_by_zip$estimate,
         title = "Breakdown of Black or African American population in Oakland"
+        )
+```
+
+# Breakdown of White people in Oakland
+
+```{r}
+     oakland_target_race_by_zip <- oakland_data %>% 
+       select(Zip_Number, estimate, race) %>%
+       group_by(Zip_Number, race) %>%
+       mutate(Zip_Number = as.numeric(Zip_Number)) %>%
+       summarize(estimate = sum(estimate)) %>%
+      filter(race == "White Alone") %>%
+        select(-race) 
+      
+      oakland_target_race_by_zip_sf <- oakland_target_race_by_zip %>% 
+      left_join(
+        usa_zips %>%
+          transmute(GEOID10 = as.numeric(GEOID10)),
+        by = c("Zip_Number" = "GEOID10")
+        ) %>%
+      st_as_sf()
+
+    race_pal <- colorNumeric(
+      palette = "Reds",
+      domain = oakland_target_race_by_zip_sf$oakland_target_race_by_zip
+      )
+
+      leaflet() %>%
+      addProviderTiles(providers$CartoDB.Positron) %>%
+      addPolygons(
+        data = oakland_target_race_by_zip_sf,
+        fillColor = ~race_pal(oakland_target_race_by_zip$estimate),
+        color = "white",
+        weight = 0.5,
+        fillOpacity = 0.5,
+        label = ~oakland_target_race_by_zip$estimate
+        ) %>%
+      addLegend(
+        data = oakland_target_race_by_zip_sf,
+        pal = race_pal,
+        values = ~oakland_target_race_by_zip$estimate,
+        title = "Breakdown of White population in Oakland"
         )
 ```
 
@@ -410,10 +456,19 @@ income_pal <- colorNumeric(
 
 ```
 
+## General Findings Based on the Maps Above: 
+  Some key observations include: the areas with a large Black population are in Southwest Oakland, the areas with the largest White population are in North Oakland, and the areas of lower income people are in the South Oakland. There is large overlap in areas with higher Black population and lower income people, which affirms the findings from the equity analysis.
+  
+  Looking at the map of Covid test rates, the largest concentration of high test rates are in the northern part of Oakland. Comparing this with the race/income geography maps, the zip codes with the most test rates are also the zip codes with a high white population as well as a high population of highest income people. The rest of Oakland has roughly the same testing rates, which are a lot lower than the northern testing rates. 
+
+  Looking at the map of Covid case races is really interesting because there are large disparities in cases. Southern Oakland has several factors more cases than Northern Oakland. The zip codes with the most case rates is also the zip code with a high Black population and relatively lower income population. The lowest covid case rates are in Northern Oakland, which are the the zip codes with the highest test rates, mostly White and high income. 
+
+  These preliminary findings are further investigated below. 
+
 
 # Regression Modeling 
 
- Before beginning our regression analysis, we noticed that when trying to see the relationship of COVID cases versus COVID testing that several outliers were present and made the results less relevant, so we wanted to find which zipcodes caused these outliers and removed them to allow the results to be more accurate.
+  Before beginning our regression analysis, we noticed that when trying to see the relationship of COVID cases versus COVID testing that several outliers were present and made the results less relevant, so we wanted to find which zipcodes caused these outliers and removed them to allow the results to be more accurate.
 ```{r}
 
 #NOTE: ignore estimates if not for income or race group
@@ -449,6 +504,7 @@ summary(model)
 
 
 ```
+ 
  From this we can identify there are some zipcodes with data points that deviate far from the rest of the data points, specifically 94720, 95377, 94621,94613 and 94603, which are significatly higher either in terms of test rate or case rate, so we will remove these frames from the regression to hopefully help improve it.
  
 # Correlation between TestRates and CaseRates with Outliers Removed
